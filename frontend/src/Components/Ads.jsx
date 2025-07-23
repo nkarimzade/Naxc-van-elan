@@ -63,7 +63,7 @@ function Ads() {
         // Backend connection check
         console.log('Backend-ə sorğu göndərilir...');
         
-        const response = await axios.get('http://localhost:5000/api/ilan', {
+        const response = await axios.get('https://naxc-van-elan.onrender.com/api/ilan', {
           timeout: 10000 // 10 saniye timeout
         });
         

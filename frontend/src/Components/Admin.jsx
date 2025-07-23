@@ -25,7 +25,7 @@ function Admin() {
 
       try {
         // Token'ı doğrula
-        const response = await axios.get('http://localhost:5000/api/admin/verify', {
+        const response = await axios.get('https://naxc-van-elan.onrender.com/api/admin/verify', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -52,7 +52,7 @@ function Admin() {
   const fetchIlanlar = async (token) => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/admin/ilanlar', {
+      const response = await axios.get('https://naxc-van-elan.onrender.com/api/admin/ilanlar', {
         headers: {
           'Authorization': `Bearer ${token || localStorage.getItem('adminToken')}`
         }
@@ -73,7 +73,7 @@ function Admin() {
   // Reklam taleplerini getir
   const fetchReklamTalepler = async (token) => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/reklam-talepler', {
+      const response = await axios.get('https://naxc-van-elan.onrender.com/api/admin/reklam-talepler', {
         headers: {
           'Authorization': `Bearer ${token || localStorage.getItem('adminToken')}`
         }
@@ -92,7 +92,7 @@ function Admin() {
   const onaylaIlan = async (ilanId) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.put(`http://localhost:5000/api/admin/ilan/${ilanId}/onayla`, {}, {
+      await axios.put(`https://naxc-van-elan.onrender.com/api/admin/ilan/${ilanId}/onayla`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -123,7 +123,7 @@ function Admin() {
 
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/ilan/${ilanId}`, {
+      await axios.delete(`https://naxc-van-elan.onrender.com/api/ilan/${ilanId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -145,7 +145,7 @@ function Admin() {
   const updateReklamDurum = async (talepId, durum, adminQeyd = '') => {
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.put(`http://localhost:5000/api/admin/reklam-talep/${talepId}/durum`, {
+      await axios.put(`https://naxc-van-elan.onrender.com/api/admin/reklam-talep/${talepId}/durum`, {
         durum,
         adminQeyd
       }, {
@@ -179,7 +179,7 @@ function Admin() {
 
     try {
       const token = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/admin/reklam-talep/${talepId}`, {
+      await axios.delete(`https://naxc-van-elan.onrender.com/api/admin/reklam-talep/${talepId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

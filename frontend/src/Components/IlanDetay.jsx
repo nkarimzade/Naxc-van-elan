@@ -13,7 +13,7 @@ function IlanDetay() {
   useEffect(() => {
     const fetchIlan = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/ilan/${id}`);
+        const response = await axios.get(`https://naxc-van-elan.onrender.com/api/ilan/${id}`);
         setIlan(response.data);
         setLoading(false);
       } catch (error) {
