@@ -17,7 +17,7 @@ function AdminLogin() {
       ...formData,
       [e.target.name]: e.target.value
     });
-    setError(''); // Hata mesajını temizle
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -29,13 +29,10 @@ function AdminLogin() {
       const response = await axios.post('https://naxc-van-elan.onrender.com/api/admin/login', formData);
       const { token, admin } = response.data;
       
-      // Token'ı localStorage'a kaydet
       localStorage.setItem('adminToken', token);
       localStorage.setItem('adminUser', JSON.stringify(admin));
       
       console.log('Admin girişi başarılı:', admin.username);
-      
-      // Admin sayfasına yönlendir
       navigate('/admin');
       
     } catch (error) {
@@ -58,14 +55,14 @@ function AdminLogin() {
           <p>NaxAuto Admin Paneli</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="admin-login-form">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
 
-          <div className="form-group">
+        <form onSubmit={handleSubmit} className="admin-login-form">
+          <div className="input-container">
             <label htmlFor="username">İstifadəçi Adı</label>
             <input
               type="text"
@@ -79,7 +76,7 @@ function AdminLogin() {
             />
           </div>
 
-          <div className="form-group">
+          <div className="input-container">
             <label htmlFor="password">Şifrə</label>
             <input
               type="password"
