@@ -1,0 +1,271 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+.footer {
+  background: #ffffff;
+  color: #1f2937;
+  margin-top: auto;
+  position: relative;
+  border-top: 1px solid #e5e7eb;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1f2937;
+}
+
+.footer-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 3rem 2rem 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+/* Logo və Brand */
+.footer-brand {
+  text-align: center;
+  max-width: 500px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: #111827;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.footer-logo:hover {
+  color: #374151;
+}
+
+.footer-logo-img {
+  height: 35px;
+  width: auto;
+  transition: transform 0.3s ease;
+  border-radius: 50%;
+}
+
+.footer-logo:hover .footer-logo-img {
+  transform: scale(1.05);
+}
+
+.footer-description {
+  color: #6b7280;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+/* Məsuliyyət Bildirişi */
+.footer-disclaimer {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+
+.disclaimer-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.disclaimer-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.disclaimer-content p {
+  margin: 0;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+.disclaimer-content strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Alt Hissə */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-bottom-left p {
+  margin: 0.2rem 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.footer-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* KriSoft Branding */
+.powered-by {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.8rem;
+}
+
+.code-icon {
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.powered-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.powered-label {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.krisoft-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #111827;
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.krisoft-brand:hover {
+  transform: scale(1.05);
+  background: #374151;
+}
+
+.krisoft-logo-img {
+  height: 20px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.krisoft-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.krisoft-text strong {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.krisoft-text span {
+  color: #d1d5db;
+  font-size: 0.6rem;
+}
+
+.powered-suffix {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer-container {
+    padding: 2rem 1rem;
+  }
+  
+  .footer-logo {
+    font-size: 1.5rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .footer-logo-img {
+    height: 32px;
+  }
+  
+  .footer-description {
+    font-size: 0.9rem;
+  }
+  
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+  }
+  
+  .powered-text {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .krisoft-brand {
+    margin: 0.5rem 0;
+  }
+  
+  .krisoft-logo-img {
+    height: 18px;
+  }
+  
+  .disclaimer-content {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-container {
+    padding: 1.5rem 1rem;
+  }
+  
+  .footer-logo {
+    font-size: 1.4rem;
+  }
+  
+  .footer-logo-img {
+    height: 28px;
+  }
+  
+  .disclaimer-content p {
+    font-size: 0.85rem;
+  }
+  
+  .krisoft-logo-img {
+    height: 16px;
+  }
+} 
