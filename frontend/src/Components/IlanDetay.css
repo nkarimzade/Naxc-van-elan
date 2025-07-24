@@ -99,6 +99,9 @@
   margin: 0 auto;
   padding: 20px;
   font-family: 'Poppins', sans-serif;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  box-sizing: border-box;
 }
 
 .back-btn {
@@ -125,6 +128,9 @@
   border-radius: 12px;
   padding: 30px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  overflow-x: hidden;
+  word-wrap: break-word;
+  box-sizing: border-box;
 }
 
 .detay-images {
@@ -190,6 +196,26 @@
   gap: 10px;
   overflow-x: auto;
   padding: 5px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd transparent;
+}
+
+.image-thumbnails::-webkit-scrollbar {
+  height: 6px;
+}
+
+.image-thumbnails::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.image-thumbnails::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.image-thumbnails::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
 }
 
 .thumbnail {
@@ -216,6 +242,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  min-width: 0; /* Grid item'ların taşmasını önler */
 }
 
 .detay-header h1 {
@@ -282,6 +311,8 @@
 .condition-section, .equipment-section, .additional-info, .vin-section {
   border-top: 1px solid #eee;
   padding-top: 20px;
+  overflow-x: hidden;
+  word-wrap: break-word;
 }
 
 .condition-section h3, .equipment-section h3, .additional-info h3, .vin-section h3 {
@@ -324,6 +355,10 @@
   margin: 0;
   line-height: 1.6;
   color: #555;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  white-space: pre-wrap;
 }
 
 .vin-code {
@@ -371,6 +406,8 @@
 .contact-value {
   color: #333;
   font-weight: 600;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .contact-buttons {
@@ -443,16 +480,36 @@
 @media (max-width: 768px) {
   .ilan-detay-container {
     padding: 10px;
+    overflow-x: hidden;
   }
 
   .detay-content {
     grid-template-columns: 1fr;
     gap: 20px;
-    padding: 20px;
+    padding: 15px;
+    overflow-x: hidden;
   }
 
   .spec-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .spec-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 8px 0;
+  }
+
+  .spec-item .label {
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+
+  .spec-item .value {
+    font-size: 14px;
+    word-break: break-word;
   }
 
   .main-image-container {
@@ -460,14 +517,122 @@
   }
 
   .detay-header h1 {
-    font-size: 24px;
+    font-size: 20px;
+    line-height: 1.3;
+    word-break: break-word;
+    margin-bottom: 15px;
+  }
+
+  .price-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
   .price {
-    font-size: 28px;
+    font-size: 24px;
+    word-break: break-word;
   }
 
   .contact-buttons {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .contact-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .contact-value {
+    word-break: break-all;
+    font-size: 14px;
+  }
+
+  .equipment-list {
+    gap: 6px;
+  }
+
+  .equipment-item {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  .condition-items {
+    gap: 6px;
+  }
+
+  .condition-tag {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .additional-info {
+    padding-top: 15px;
+  }
+
+  .additional-info p {
+    font-size: 14px;
+    word-break: break-word;
+    line-height: 1.5;
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  .vin-code {
+    font-size: 12px;
+    word-break: break-all;
+    padding: 8px;
+  }
+}
+
+/* Çok küçük ekranlar için ek düzenlemeler */
+@media (max-width: 480px) {
+  .ilan-detay-container {
+    padding: 5px;
+  }
+
+  .detay-content {
+    padding: 10px;
+    gap: 15px;
+  }
+
+  .detay-header h1 {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .price {
+    font-size: 20px;
+  }
+
+  .main-image-container {
+    height: 200px;
+  }
+
+  .thumbnail {
+    width: 60px;
+    height: 45px;
+  }
+
+  .spec-item .label,
+  .spec-item .value {
+    font-size: 12px;
+  }
+
+  .contact-section {
+    padding: 15px;
+  }
+
+  .call-btn, .email-btn {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .additional-info p {
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
   }
 } 
