@@ -44,6 +44,22 @@ function Ads() {
 
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [activeFilterCount, setActiveFilterCount] = useState(0);
+  const [showLaunchModal, setShowLaunchModal] = useState(true);
+
+  // Modal kapatma ve localStorage kontrolü
+  useEffect(() => {
+    const modalClosed = localStorage.getItem('launchModalClosed_v2');
+    if (modalClosed === 'true') {
+      setShowLaunchModal(false);
+    }
+  }, []);
+
+  const closeLaunchModal = (dontShowAgain = false) => {
+    setShowLaunchModal(false);
+    if (dontShowAgain) {
+      localStorage.setItem('launchModalClosed_v2', 'true');
+    }
+  };
 
   // Filtre seçenekleri
   const yanacaqTipleri = ['Benzin', 'Dizel', 'Qaz', 'Elektrik', 'Hibrid'];
@@ -326,6 +342,54 @@ function Ads() {
 
   return (
     <div className="ads-container content-loading">
+      {/* Tam Ekran Launch Modal */}
+      {showLaunchModal && (
+        <div className="launch-modal-overlay">
+          <div className="launch-modal">
+            <button 
+              className="modal-close"
+              onClick={() => closeLaunchModal(false)}
+            >
+              ✕
+            </button>
+            
+            <div className="modal-content">
+              <div className="modal-header">
+                <h1>Naxçıvan Avto Elan</h1>
+                <h2>Yeni Açıldı!</h2>
+              </div>
+              
+              <p className="offer-text">
+                İlk elan paylaşan <span className="highlight">10 nəfər</span>
+                <strong> 1 il PULSUZ Premium Elan</strong> hüququ qazanacaq
+              </p>
+              
+              <button 
+                className="cta-button"
+                onClick={() => {
+                  navigate('/elan-yarat');
+                  closeLaunchModal(false);
+                }}
+              >
+                İNDİ ELAN VER
+              </button>
+              
+              <label className="dont-show-again">
+                <input 
+                  type="checkbox" 
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      closeLaunchModal(true);
+                    }
+                  }}
+                />
+                Bir daha göstərmə
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="filters-section">
         <div className="filters-header">
           <h3>
