@@ -39,6 +39,7 @@ const ilanSchema = new mongoose.Schema({
   otherModel: String,
   ban: String,
   muherrik: String,
+  yanacaq: String,
   oturucu: String,
   suret: String,
   hecm: Number,

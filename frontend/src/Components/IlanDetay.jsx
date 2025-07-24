@@ -140,10 +140,12 @@ function IlanDetay() {
                 <span className="label">Mühərrik:</span>
                 <span className="value">{ilan.muherrik}</span>
               </div>
-              <div className="spec-item">
-                <span className="label">Yanacaq:</span>
-                <span className="value">{ilan.yanacaq}</span>
-              </div>
+              {ilan.yanacaq && (
+                <div className="spec-item">
+                  <span className="label">Yanacaq:</span>
+                  <span className="value">{ilan.yanacaq}</span>
+                </div>
+              )}
               <div className="spec-item">
                 <span className="label">Sürət qutusu:</span>
                 <span className="value">{ilan.suret}</span>
