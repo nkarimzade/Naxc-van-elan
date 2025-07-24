@@ -649,33 +649,8 @@ function Ads() {
                     {ilan.otherModel ? ilan.otherModel : ilan.model}
                   </h3>
                   <p className="ad-price">{ilan.qiymet} {ilan.qiymetTip}</p>
-                  <div className="ad-details">
-                    {ilan.buraxilis && <span>{ilan.buraxilis} il</span>}
-                    {ilan.yurush && <span>{ilan.yurush} {ilan.yurushTip}</span>}
-                    {ilan.muherrik && <span>{ilan.muherrik}</span>}
-                    {ilan.ban && <span>{ilan.ban}</span>}
-                  </div>
-                  <div className="ad-extra-details">
-                    {ilan.hecm && <span>{ilan.hecm} sm³</span>}
-                    {ilan.guc && <span>{ilan.guc} a.g.</span>}
-                    {ilan.oturucu && <span>{ilan.oturucu}</span>}
-                    {ilan.suret && <span>{ilan.suret}</span>}
-                  </div>
-                  <div className="ad-status">
-                    {ilan.vuruq && <span>Vuruğu var</span>}
-                    {ilan.renglenib && <span>Rənglənib</span>}
-                    {ilan.qezali && <span>Qəzalı</span>}
-                  </div>
-                  <div className="ad-location">
-                    <span>{ilan.seher}</span>
-                    <span>{new Date(ilan.createdAt).toLocaleDateString('az-AZ')}</span>
-                  </div>
-                  <div className="ad-contact">
-                    <span>{ilan.ad}</span>
-                    <span>{ilan.telefon}</span>
-                  </div>
                   <div className="click-hint">
-                    Ürün detayı üçün üstünə klikləyin
+                    Əlavə detay üçün üstünə tıklayın
                   </div>
                 </div>
               </div>
