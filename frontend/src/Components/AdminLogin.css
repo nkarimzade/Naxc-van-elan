@@ -36,10 +36,6 @@
   margin: 0;
 }
 
-.admin-login-form {
-  width: 100%;
-}
-
 .error-message {
   background: #f8f8f8;
   border: 2px solid #000000;
@@ -52,20 +48,26 @@
   font-weight: bold;
 }
 
-.form-group {
-  margin-bottom: 2rem;
+.admin-login-form {
   width: 100%;
+  display: block;
 }
 
-.form-group label {
+.input-container {
+  margin-bottom: 2rem;
+  width: 100%;
+  display: block;
+}
+
+.input-container label {
   display: block;
   color: #333333;
   font-weight: bold;
   font-size: 1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
-.form-group input {
+.input-container input {
   width: 100%;
   padding: 1rem;
   border: 2px solid #cccccc;
@@ -74,15 +76,17 @@
   background: white;
   box-sizing: border-box;
   transition: border-color 0.2s ease;
+  display: block;
+  height: 50px;
 }
 
-.form-group input:focus {
+.input-container input:focus {
   outline: none;
   border-color: #000000;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
-.form-group input:disabled {
+.input-container input:disabled {
   background: #f0f0f0;
   color: #999999;
   cursor: not-allowed;
@@ -100,6 +104,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   margin-top: 1rem;
+  height: 55px;
+  display: block;
 }
 
 .login-btn:hover:not(:disabled) {

@@ -45,6 +45,7 @@ const initialState = {
   buraxilis: '',
   ban: '',
   muherrik: '',
+  yanacaq: '',
   oturucu: '',
   suret: '',
   hecm: '',
@@ -81,6 +82,7 @@ const banOptions = [
   'Hetçbek, 5 qapı', 'Motosiklet', 'Skuter', 'Yük maşını', 'Mikroavtobus', 'Furqon'
 ];
 const muherrikOptions = ['Benzin', 'Dizel', 'Dizel-Hibrid', 'Elektro', 'Hibrid', 'Hidrogen', 'Plug-in Hibrid', 'Qaz'];
+const yanacaqOptions = ['Benzin', 'Dizel', 'Elektro', 'Hibrid', 'Qaz', 'Hidrogen'];
 const oturucuOptions = ['Arxa', 'Tam', 'Ön'];
 const suretOptions = ['Avtomat (AT)', 'Avtomat (DHT)', 'Avtomat (Reduktor)', 'Avtomat (Robot)', 'Avtomat (Variator)', 'Mexaniki (MT)'];
 const hecmOptions = Array.from({length: 64}, (_, i) => (i+1)*50);
@@ -296,6 +298,14 @@ function CreateAd() {
           required
           placeholder="Mühərrik növünü yazın"
         />
+        {/* Yanacaq */}
+        <label>Yanacaq *</label>
+        <select value={form.yanacaq} onChange={e => setForm({...form, yanacaq: e.target.value})} required>
+          <option value="">Seçin</option>
+          {yanacaqOptions.map(yanacaq => (
+            <option key={yanacaq} value={yanacaq}>{yanacaq}</option>
+          ))}
+        </select>
         {/* Ötürücü */}
         <label>Ötürücü *</label>
         <input
