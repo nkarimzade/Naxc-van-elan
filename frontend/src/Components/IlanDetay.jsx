@@ -159,7 +159,7 @@ function IlanDetay() {
                 <span className="value">{ilan.guc} a.g.</span>
               </div>
               <div className="spec-item">
-                <span className="label">Oturacaq sayı:</span>
+                <span className="label">Ötürücü:</span>
                 <span className="value">{ilan.oturucu}</span>
               </div>
               <div className="spec-item">
