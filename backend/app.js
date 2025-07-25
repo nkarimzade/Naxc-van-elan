@@ -369,6 +369,17 @@ app.post('/api/ilan', checkImageSize, async (req, res) => {
   }
 });
 
+// Hızlı ilan sayısı kontrol (cache invalidation için)
+app.get('/api/ilan/count', async (req, res) => {
+  try {
+    const count = await Ilan.countDocuments({ onaylanmis: true });
+    res.json({ count });
+  } catch (err) {
+    console.error('Ilan sayısı alma hatası:', err);
+    res.status(500).json({ error: 'Sayı alınamadı.' });
+  }
+});
+
 // İlanları getir (sadece onaylanmış) - Pagination ile
 app.get('/api/ilan', async (req, res) => {
   try {

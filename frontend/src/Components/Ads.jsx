@@ -80,13 +80,40 @@ function Ads() {
   // Marka seçimine göre modelleri filtrele
   const [availableModels, setAvailableModels] = useState([]);
 
+  // Background'da yeni ilan kontrol et
+  const checkForUpdates = async (baseURL, cachedTotalCount) => {
+    try {
+      const response = await axios.get(`${baseURL}/api/ilan/count`, {
+        timeout: 3000 // Hızlı check
+      });
+      
+      if (response.data.count !== cachedTotalCount) {
+        console.log('Yeni ilan tespit edildi! Cache temizleniyor...');
+        setCache(new Map()); // Cache'i temizle
+        
+        // Soft notification (optional)
+        const notification = document.createElement('div');
+        notification.textContent = 'Yeni elanlar əlavə edildi! 🆕';
+        notification.style.cssText = `
+          position: fixed; top: 20px; right: 20px; z-index: 10000;
+          background: #10b981; color: white; padding: 12px 20px;
+          border-radius: 8px; font-size: 14px; animation: slideIn 0.3s ease;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+      }
+    } catch (error) {
+      console.log('Background update check failed:', error.message);
+    }
+  };
+
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false, useProduction = false) => {
     try {
       // Cache kontrolü - sadece ilk sayfa için
       const cacheKey = `page_${page}_prod_${useProduction}`;
       const now = Date.now();
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika cache
+      const CACHE_DURATION = 2 * 60 * 1000; // 2 dakika cache (daha sık güncelleme)
       
       if (page === 1 && !isLoadMore && cache.has(cacheKey)) {
         const cachedData = cache.get(cacheKey);
@@ -98,6 +125,15 @@ function Ads() {
           setTotalPages(cachedData.data.pagination.totalPages);
           setTotalCount(cachedData.data.pagination.totalCount);
           setLoading(false);
+          
+          // Background'da yeni veri kontrol et (silent update)
+          setTimeout(() => {
+            const bgBaseURL = useProduction || window.location.hostname !== 'localhost' 
+              ? 'https://naxc-van-elan-o2sr.onrender.com' 
+              : 'http://localhost:5000';
+            checkForUpdates(bgBaseURL, cachedData.data.pagination.totalCount);
+          }, 1000);
+          
           return;
         }
       }
