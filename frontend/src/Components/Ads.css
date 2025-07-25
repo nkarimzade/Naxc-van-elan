@@ -914,6 +914,32 @@
   backdrop-filter: blur(4px);
 }
 
+/* Refresh Cache Button */
+.refresh-cache-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 1rem;
+}
+
+.refresh-cache-btn:hover {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.filter-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* Load More Button */
 .load-more-container {
   display: flex;

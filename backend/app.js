@@ -402,19 +402,26 @@ app.get('/api/ilan', async (req, res) => {
   }
 });
 
-// Hafif ilan listesi (görseller olmadan) - Ana sayfa için
+// Hafif ilan listesi (sadece ilk görsel) - Ana sayfa için
 app.get('/api/ilan/list', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    // Sadece gerekli alanları getir (görselleri hariç tut)
+    // Ana sayfa için optimize edilmiş query
     const ilanlar = await Ilan.find({ onaylanmis: true })
-      .select('-sekiller -techizat -elave -vin') // Büyük alanları hariç tut
+      .select('marka model otherMarka otherModel qiymet qiymetTip buraxilis seher sekiller')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean(); // Mongoose overhead'ini azalt
+    
+    // Sadece ilk görseli al
+    const optimizedIlanlar = ilanlar.map(ilan => ({
+      ...ilan,
+      sekiller: ilan.sekiller && ilan.sekiller.length > 0 ? [ilan.sekiller[0]] : []
+    }));
       
     const total = await Ilan.countDocuments({ onaylanmis: true });
     const totalPages = Math.ceil(total / limit);
@@ -422,7 +429,7 @@ app.get('/api/ilan/list', async (req, res) => {
     console.log(`Hafif ilan listesi - Sayfa: ${page}/${totalPages}`);
     
     res.json({
-      ilanlar,
+      ilanlar: optimizedIlanlar,
       pagination: {
         currentPage: page,
         totalPages,

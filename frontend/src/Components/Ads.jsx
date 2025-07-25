@@ -23,6 +23,10 @@ function Ads() {
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Cache sistemi
+  const [cache, setCache] = useState(new Map());
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+
   // Filtre state'leri
   const [filters, setFilters] = useState({
     marka: '',
@@ -79,6 +83,25 @@ function Ads() {
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false, useProduction = false) => {
     try {
+      // Cache kontrolü - sadece ilk sayfa için
+      const cacheKey = `page_${page}_prod_${useProduction}`;
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika cache
+      
+      if (page === 1 && !isLoadMore && cache.has(cacheKey)) {
+        const cachedData = cache.get(cacheKey);
+        if (now - cachedData.timestamp < CACHE_DURATION) {
+          console.log('Cache\'ten veri kullanılıyor:', cachedData.data.ilanlar.length, 'ilan');
+          setIlanlar(cachedData.data.ilanlar);
+          setFilteredIlanlar(cachedData.data.ilanlar);
+          setCurrentPage(cachedData.data.pagination.currentPage);
+          setTotalPages(cachedData.data.pagination.totalPages);
+          setTotalCount(cachedData.data.pagination.totalCount);
+          setLoading(false);
+          return;
+        }
+      }
+
       if (!isLoadMore) {
         setLoadingText('Server ilə əlaqə qurulur...');
       } else {
@@ -97,9 +120,11 @@ function Ads() {
         baseURL = 'http://localhost:5000';
       }
       
-      console.log('API URL:', `${baseURL}/api/ilan?page=${page}&limit=20`);
+      // Ana sayfa için optimize edilmiş endpoint kullan
+      const endpoint = `${baseURL}/api/ilan/list?page=${page}&limit=20`;
+      console.log('API URL:', endpoint);
       
-      const response = await axios.get(`${baseURL}/api/ilan?page=${page}&limit=20`, {
+      const response = await axios.get(endpoint, {
         timeout: baseURL.includes('localhost') ? 5000 : 30000 // Local: 5s, Production: 30s
       });
       
@@ -110,6 +135,19 @@ function Ads() {
       
       console.log('Backend yanıtı:', response.data);
       const { ilanlar: newIlanlar, pagination } = response.data;
+      
+      // Cache'e kaydet (sadece ilk sayfa)
+      if (page === 1) {
+        setCache(prev => {
+          const newCache = new Map(prev);
+          newCache.set(cacheKey, {
+            data: response.data,
+            timestamp: now
+          });
+          return newCache;
+        });
+        console.log('Veri cache\'e kaydedildi');
+      }
       
       if (!isLoadMore) {
         setLoadingText('Elanlar hazırlanır...');
@@ -663,6 +701,17 @@ function Ads() {
           <span className="results-count">
             {filteredIlanlar.length} elan tapıldı
           </span>
+          <button 
+            className="refresh-cache-btn" 
+            onClick={() => {
+              setCache(new Map());
+              setLastFetchTime(0);
+              fetchIlanlar(1, false, false);
+            }}
+            title="Cache'i temizle və yeni veri yükle"
+          >
+            🔄 Yenilə
+          </button>
         </div>
       </div>
 
