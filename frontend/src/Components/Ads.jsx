@@ -17,6 +17,12 @@ function Ads() {
   const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState('Elanlar yüklənir...');
   const [currentSlides, setCurrentSlides] = useState({});
+  
+  // Pagination state'leri
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Filtre state'leri
   const [filters, setFilters] = useState({
@@ -71,63 +77,92 @@ function Ads() {
   // Marka seçimine göre modelleri filtrele
   const [availableModels, setAvailableModels] = useState([]);
 
-  useEffect(() => {
-    const fetchIlanlar = async () => {
-      try {
+  // İlanları getir fonksiyonu
+  const fetchIlanlar = async (page = 1, isLoadMore = false) => {
+    try {
+      if (!isLoadMore) {
         setLoadingText('Server ilə əlaqə qurulur...');
-        
-        // Backend connection check
-        console.log('Backend-ə sorğu göndərilir...');
-        
-        const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/ilan', {
-          timeout: 10000 // 10 saniye timeout
-        });
-        
+      } else {
+        setLoadingMore(true);
+      }
+      
+      // Backend connection check
+      console.log('Backend-ə sorğu göndərilir... Sayfa:', page);
+      
+      // Hafif ilan listesi kullan (görselleri yüklemeden)
+      const response = await axios.get(`https://naxc-van-elan-o2sr.onrender.com/api/ilan/list?page=${page}&limit=20`, {
+        timeout: 10000 // 10 saniye timeout
+      });
+      
+      if (!isLoadMore) {
         setLoadingText('Elanlar işlənir...');
         await new Promise(resolve => setTimeout(resolve, 500)); // Smooth transition
-        
-        console.log('Backend yanıtı:', response.data);
-        const data = response.data;
-        
+      }
+      
+      console.log('Backend yanıtı:', response.data);
+      const { ilanlar: newIlanlar, pagination } = response.data;
+      
+      if (!isLoadMore) {
         setLoadingText('Elanlar hazırlanır...');
-        
-        // Her ilan için başlangıç slide index'i
-        const initialSlides = {};
-        data.forEach(ilan => {
-          initialSlides[ilan._id] = 0;
-        });
-        
-        // Async operations tamamlansın diye bekleme
+      }
+      
+      // Her ilan için başlangıç slide index'i
+      const initialSlides = {};
+      newIlanlar.forEach(ilan => {
+        initialSlides[ilan._id] = 0;
+      });
+      
+      // Async operations tamamlansın diye bekleme
+      if (!isLoadMore) {
         await new Promise(resolve => setTimeout(resolve, 300));
-        
-        setCurrentSlides(initialSlides);
-        setIlanlar(data);
-        setFilteredIlanlar(data);
-        
+      }
+      
+      setCurrentSlides(prev => ({ ...prev, ...initialSlides }));
+      
+      if (isLoadMore) {
+        // Yeni ilanları mevcut listeye ekle
+        setIlanlar(prev => [...prev, ...newIlanlar]);
+        setFilteredIlanlar(prev => [...prev, ...newIlanlar]);
+      } else {
+        // İlk yükleme veya sayfa yenileme
+        setIlanlar(newIlanlar);
+        setFilteredIlanlar(newIlanlar);
+      }
+      
+      // Pagination bilgilerini güncelle
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalCount(pagination.totalCount);
+      
+      if (!isLoadMore) {
         setLoadingText('Elanlar yükləndi!');
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log('Elanlar tam yüklendi:', data.length, 'adet');
-        setLoading(false);
-        
-      } catch (error) {
-        console.error('Elan yükleme hatası:', error);
-        console.error('Hata detayları:', error.response?.data || error.message);
-        
-        if (error.code === 'ECONNABORTED') {
-          setLoadingText('Bağlantı vaxtı bitdi. Backend işə salınmamış ola bilər.');
-        } else if (error.response?.status === 500) {
-          setLoadingText('Server xətası. Database problemi ola bilər.');
-        } else {
-          setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
-        }
-        
-        // Error durumunda da bir süre bekle
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setLoading(false);
       }
-    };
+      
+      console.log('Elanlar yüklendi:', newIlanlar.length, 'adet. Toplam:', pagination.totalCount);
+      setLoading(false);
+      setLoadingMore(false);
+      
+    } catch (error) {
+      console.error('Elan yükleme hatası:', error);
+      console.error('Hata detayları:', error.response?.data || error.message);
+      
+      if (error.code === 'ECONNABORTED') {
+        setLoadingText('Bağlantı vaxtı bitdi. Backend işə salınmamış ola bilər.');
+      } else if (error.response?.status === 500) {
+        setLoadingText('Server xətası. Database problemi ola bilər.');
+      } else {
+        setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
+      }
+      
+      // Error durumunda da bir süre bekle
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
+  useEffect(() => {
     fetchIlanlar();
   }, []);
 
@@ -722,6 +757,26 @@ function Ads() {
           })
         )}
       </div>
+      
+      {/* Load More butonu */}
+      {currentPage < totalPages && (
+        <div className="load-more-container">
+          <button 
+            className="load-more-btn" 
+            onClick={() => {
+              const nextPage = currentPage + 1;
+              fetchIlanlar(nextPage, true);
+            }}
+            disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <div className="loading-spinner-small"></div>
+            ) : (
+              `Daha çox elan yüklə (${totalCount - filteredIlanlar.length} qaldı)`
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

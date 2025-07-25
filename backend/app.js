@@ -3,22 +3,73 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
+
+// Response compression middleware (gzip)
+app.use(compression());
 app.use(cors());
 
-// Dosya boyutu limitini artır (50MB)
-app.use(express.json({limit: '50mb'}));
-app.use(express.urlencoded({limit: '50mb', extended: true}));
+// Daha makul dosya boyutu limiti (10MB)
+app.use(express.json({limit: '10mb'}));
+app.use(express.urlencoded({limit: '10mb', extended: true}));
+
+// Görsel boyutu kontrol middleware'i
+const checkImageSize = (req, res, next) => {
+  if (req.body.sekiller && Array.isArray(req.body.sekiller)) {
+    const maxImages = 8;
+    const maxSizePerImage = 2 * 1024 * 1024; // 2MB per image in base64
+    
+    if (req.body.sekiller.length > maxImages) {
+      return res.status(400).json({ 
+        error: `Maksimum ${maxImages} şəkil yükləyə bilərsiniz.` 
+      });
+    }
+    
+    for (let i = 0; i < req.body.sekiller.length; i++) {
+      const imageSize = Buffer.byteLength(req.body.sekiller[i], 'base64');
+      if (imageSize > maxSizePerImage) {
+        return res.status(400).json({ 
+          error: `${i + 1}. şəkil çox böyükdür. Maksimum 2MB olmalıdır.` 
+        });
+      }
+    }
+  }
+  next();
+};
 
 // JWT Secret (production'da .env dosyasında olmalı)
 const JWT_SECRET = process.env.JWT_SECRET || 'naxcivan-elan-secret-key-2024';
 
 // MongoDB bağlantısı
 mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/naxcivan-elan')
-  .then(() => console.log('MongoDB bağlantısı uğurludur!'))
+  .then(() => {
+    console.log('MongoDB bağlantısı uğurludur!');
+    // Performance için indexleri oluştur
+    createDatabaseIndexes();
+  })
   .catch((err) => console.error('MongoDB bağlantı xətası:', err));
+
+// Database indexlerini oluştur
+const createDatabaseIndexes = async () => {
+  try {
+    // İlan koleksiyonu için indexler
+    await mongoose.connection.db.collection('ilans').createIndex({ createdAt: -1 });
+    await mongoose.connection.db.collection('ilans').createIndex({ onaylanmis: 1 });
+    await mongoose.connection.db.collection('ilans').createIndex({ marka: 1 });
+    await mongoose.connection.db.collection('ilans').createIndex({ seher: 1 });
+    await mongoose.connection.db.collection('ilans').createIndex({ qiymet: 1 });
+    
+    // Reklam talep koleksiyonu için index
+    await mongoose.connection.db.collection('reklamtaleps').createIndex({ createdAt: -1 });
+    
+    console.log('Database indexleri oluşturuldu!');
+  } catch (err) {
+    console.error('Index oluşturma hatası:', err);
+  }
+};
 
 // Admin kullanıcı şeması
 const adminSchema = new mongoose.Schema({
@@ -293,37 +344,126 @@ app.delete('/api/admin/reklam-talep/:id', authenticateToken, async (req, res) =>
 });
 
 // İlan ekle
-app.post('/api/ilan', async (req, res) => {
+app.post('/api/ilan', checkImageSize, async (req, res) => {
   try {
     console.log('Gelen görsel sayısı:', req.body.sekiller?.length || 0);
+    
+    // Görsel boyutlarını logla
+    if (req.body.sekiller) {
+      const totalSize = req.body.sekiller.reduce((sum, img) => 
+        sum + Buffer.byteLength(img, 'base64'), 0
+      );
+      console.log('Toplam görsel boyutu:', (totalSize / (1024 * 1024)).toFixed(2), 'MB');
+    }
+    
     const ilan = new Ilan(req.body);
     await ilan.save();
     console.log('İlan başarıyla kaydedildi. ID:', ilan._id);
-    res.status(201).json(ilan);
+    res.status(201).json({ 
+      message: 'İlan uğurla əlavə edildi.',
+      id: ilan._id 
+    });
   } catch (err) {
     console.error('İlan ekleme hatası:', err);
     res.status(500).json({ error: 'İlan əlavə edilə bilmədi.', detail: err.message });
   }
 });
 
-// İlanları getir (sadece onaylanmış)
+// İlanları getir (sadece onaylanmış) - Pagination ile
 app.get('/api/ilan', async (req, res) => {
   try {
-    const ilanlar = await Ilan.find({ onaylanmis: true }).sort({ createdAt: -1 });
-    console.log('Onaylanmış ilan sayısı:', ilanlar.length);
-    res.json(ilanlar);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    const ilanlar = await Ilan.find({ onaylanmis: true })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+      
+    const total = await Ilan.countDocuments({ onaylanmis: true });
+    const totalPages = Math.ceil(total / limit);
+    
+    console.log(`İlanlar getiriliyor - Sayfa: ${page}/${totalPages}, Limit: ${limit}`);
+    
+    res.json({
+      ilanlar,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: total,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (err) {
     console.error('İlanları alma hatası:', err);
     res.status(500).json({ error: 'İlanlar alınamadı.' });
   }
 });
 
-// Admin için tüm ilanları getir (korumalı)
+// Hafif ilan listesi (görseller olmadan) - Ana sayfa için
+app.get('/api/ilan/list', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Sadece gerekli alanları getir (görselleri hariç tut)
+    const ilanlar = await Ilan.find({ onaylanmis: true })
+      .select('-sekiller -techizat -elave -vin') // Büyük alanları hariç tut
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+      
+    const total = await Ilan.countDocuments({ onaylanmis: true });
+    const totalPages = Math.ceil(total / limit);
+    
+    console.log(`Hafif ilan listesi - Sayfa: ${page}/${totalPages}`);
+    
+    res.json({
+      ilanlar,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: total,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
+  } catch (err) {
+    console.error('Hafif ilan listesi alma hatası:', err);
+    res.status(500).json({ error: 'İlan listesi alınamadı.' });
+  }
+});
+
+// Admin için tüm ilanları getir (korumalı) - Pagination ile
 app.get('/api/admin/ilanlar', authenticateToken, async (req, res) => {
   try {
-    const ilanlar = await Ilan.find().sort({ createdAt: -1 });
-    console.log('Toplam ilan sayısı:', ilanlar.length);
-    res.json(ilanlar);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Admin için daha yüksek limit
+    const skip = (page - 1) * limit;
+    
+    const ilanlar = await Ilan.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+      
+    const total = await Ilan.countDocuments();
+    const totalPages = Math.ceil(total / limit);
+    
+    console.log(`Admin ilanları - Sayfa: ${page}/${totalPages}, Toplam: ${total}`);
+    
+    res.json({
+      ilanlar,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: total,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (err) {
     console.error('İlanları alma hatası:', err);
     res.status(500).json({ error: 'İlanlar alınamadı.' });
