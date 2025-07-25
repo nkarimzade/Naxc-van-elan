@@ -77,7 +77,7 @@ function Ads() {
   const [availableModels, setAvailableModels] = useState([]);
 
   // İlanları getir fonksiyonu
-  const fetchIlanlar = async (page = 1, isLoadMore = false) => {
+  const fetchIlanlar = async (page = 1, isLoadMore = false, useProduction = false) => {
     try {
       if (!isLoadMore) {
         setLoadingText('Server ilə əlaqə qurulur...');
@@ -88,10 +88,19 @@ function Ads() {
       // Backend connection check
       console.log('Backend-ə sorğu göndərilir... Sayfa:', page);
       
-      // Local development için localhost kullan
-      const baseURL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://naxc-van-elan-o2sr.onrender.com';
+      // URL seçimi - local fallback varsa production kullan
+      let baseURL;
+      if (useProduction || window.location.hostname !== 'localhost') {
+        baseURL = 'https://naxc-van-elan-o2sr.onrender.com';
+        if (!isLoadMore) setLoadingText('Production server ilə əlaqə... (yavaş ola bilər)');
+      } else {
+        baseURL = 'http://localhost:5000';
+      }
+      
+      console.log('API URL:', `${baseURL}/api/ilan?page=${page}&limit=20`);
+      
       const response = await axios.get(`${baseURL}/api/ilan?page=${page}&limit=20`, {
-        timeout: 10000 // 10 saniye timeout
+        timeout: baseURL.includes('localhost') ? 5000 : 30000 // Local: 5s, Production: 30s
       });
       
       if (!isLoadMore) {
@@ -132,27 +141,36 @@ function Ads() {
       setLoading(false);
       setLoadingMore(false);
       
-    } catch (error) {
-      console.error('Elan yükleme hatası:', error);
-      console.error('Hata detayları:', error.response?.data || error.message);
-      
-      if (error.code === 'ECONNABORTED') {
-        setLoadingText('Bağlantı vaxtı bitdi. Backend işə salınmamış ola bilər.');
-      } else if (error.response?.status === 500) {
-        setLoadingText('Server xətası. Database problemi ola bilər.');
-      } else {
-        setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
-      }
-      
-      // Error durumunda da bir süre bekle
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setLoading(false);
-      setLoadingMore(false);
+          } catch (error) {
+        console.error('Elan yükleme hatası:', error);
+        console.error('Hata detayları:', error.response?.data || error.message);
+        
+                // Local backend çalışmıyorsa production'a fallback
+        if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && 
+            window.location.hostname === 'localhost' && !useProduction) {
+          console.log('Local backend çalışmıyor, production\'a geçiliyor...');
+          setLoadingText('Local backend çalışmıyor. Production server\'a geçiliyor...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchIlanlar(page, isLoadMore, true); // Production ile tekrar dene
+        }
+        
+        if (error.code === 'ECONNABORTED') {
+          setLoadingText('Server yavaş. Bir az daha gözləyin...');
+        } else if (error.response?.status === 500) {
+          setLoadingText('Server xətası. Database problemi ola bilər.');
+        } else {
+          setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
+        }
+        
+        // Error durumunda da bir süre bekle
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setLoading(false);
+        setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchIlanlar();
+    fetchIlanlar(1, false, false);
   }, []);
 
   // Marka seçimine göre modelleri filtrele
@@ -696,7 +714,7 @@ function Ads() {
             className="load-more-btn" 
             onClick={() => {
               const nextPage = currentPage + 1;
-              fetchIlanlar(nextPage, true);
+              fetchIlanlar(nextPage, true, false);
             }}
             disabled={loadingMore}
           >
