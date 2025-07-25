@@ -91,7 +91,6 @@ function Ads() {
         console.log('Yeni ilan tespit edildi! Cache temizleniyor...');
         setCache(new Map()); // Cache'i temizle
         
-        // Soft notification (optional)
         const notification = document.createElement('div');
         notification.textContent = 'Yeni elanlar əlavə edildi! 🆕';
         notification.style.cssText = `
