@@ -766,6 +766,8 @@ function Ads() {
                     src={firstImage} 
                     alt={`${ilan.marka} ${ilan.model}`}
                     className="car-image"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       e.target.src = DEFAULT_IMAGE;
                     }}

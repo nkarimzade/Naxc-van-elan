@@ -7,10 +7,35 @@
     <meta name="description" content="Naxçıvan'da maşın satmaq və almaq üçün pulsuz elan platforması. Yeni və ikinci əl avtomobillər burada! İndi elan yerləşdirin." />
     <meta name="keywords" content="Naxçıvan maşın, maşın satılır, maşın alınır, Naxçıvan avtomobil, maşın elanları, avtomobil bazarı" />
     <meta name="author" content="Naxauto" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1976d2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="NaxAuto" />
+    
+    <!-- Preload key resources -->
+    <link rel="preload" href="/Naxauto_logo.png" as="image" />
+    
     <title>Naxçıvan Maşın Elanı</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Service Worker registered successfully:', registration.scope);
+            })
+            .catch(error => {
+              console.log('Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
