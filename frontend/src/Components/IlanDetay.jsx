@@ -4,6 +4,86 @@ import axios from 'axios';
 import './IlanDetay.css';
 
 function IlanDetay() {
+  // Renk kodlarını Türkçe isimlere çeviren fonksiyon
+  const getRenkAdi = (rengKodu) => {
+    const renkler = {
+      // CreateAd.jsx-dəki rənglər
+      '#fff': 'Ağ',
+      '#222': 'Qara',
+      '#1976d2': 'Mavi',
+      '#e53935': 'Qırmızı',
+      '#bdbdbd': 'Boz',
+      '#e0e0e0': 'Gümüş',
+      '#43a047': 'Yaşıl',
+      '#ffd600': 'Sarı',
+      '#ff9800': 'Narıncı',
+      '#795548': 'Qəhvəyi',
+      '#8e24aa': 'Bənövşəyi',
+      '#f5f5dc': 'Bej',
+      '#283593': 'Tünd mavi',
+      '#f7e7ce': 'Şampan',
+      '#ffd700': 'Qızılı',
+      '#888': 'Boz',
+      
+      // Standart rənglər
+      '#ffffff': 'Ağ',
+      'white': 'Ağ',
+      '#000': 'Qara',
+      '#000000': 'Qara',
+      'black': 'Qara',
+      '#ff0000': 'Qırmızı',
+      '#f00': 'Qırmızı',
+      'red': 'Qırmızı',
+      '#0000ff': 'Mavi',
+      '#00f': 'Mavi',
+      'blue': 'Mavi',
+      '#00ff00': 'Yaşıl',
+      '#0f0': 'Yaşıl',
+      'green': 'Yaşıl',
+      '#ffff00': 'Sarı',
+      '#ff0': 'Sarı',
+      'yellow': 'Sarı',
+      '#ffa500': 'Narıncı',
+      'orange': 'Narıncı',
+      '#800080': 'Bənövşəyi',
+      'purple': 'Bənövşəyi',
+      '#ffc0cb': 'Çəhrayı',
+      'pink': 'Çəhrayı',
+      '#808080': 'Boz',
+      '#888888': 'Boz',
+      '#777': 'Boz',
+      '#777777': 'Boz',
+      '#999': 'Boz',
+      '#999999': 'Boz',
+      '#666': 'Tünd Boz',
+      '#666666': 'Tünd Boz',
+      '#aaa': 'Açıq Boz',
+      '#aaaaaa': 'Açıq Boz',
+      'gray': 'Boz',
+      'grey': 'Boz',
+      '#a52a2a': 'Qəhvəyi',
+      'brown': 'Qəhvəyi',
+      '#c0c0c0': 'Gümüşü',
+      'silver': 'Gümüşü',
+      'gold': 'Qızılı'
+    };
+    
+    // Renk kodunu küçük harfe çevir
+    const kod = rengKodu?.toLowerCase();
+    
+    // Eğer kod renkler objesinde varsa Türkçe karşılığını döndür
+    if (renkler[kod]) {
+      return renkler[kod];
+    }
+    
+    // Eğer hex kod ise ve listede yoksa olduğu gibi döndür
+    if (kod?.startsWith('#')) {
+      return rengKodu;
+    }
+    
+    // Başka durumlar için ilk harfi büyük yap
+    return rengKodu?.charAt(0).toUpperCase() + rengKodu?.slice(1);
+  };
   const { id } = useParams();
   const navigate = useNavigate();
   const [ilan, setIlan] = useState(null);
@@ -164,7 +244,7 @@ function IlanDetay() {
               </div>
               <div className="spec-item">
                 <span className="label">Rəng:</span>
-                <span className="value">{ilan.reng}</span>
+                <span className="value">{getRenkAdi(ilan.reng)}</span>
               </div>
               <div className="spec-item">
                 <span className="label">Yürüş:</span>
