@@ -57,8 +57,11 @@ function Admin() {
           'Authorization': `Bearer ${token || localStorage.getItem('adminToken')}`
         }
       });
-      setIlanlar(response.data);
-      console.log('Admin ilanları yüklendi:', response.data.length);
+      
+      // Pagination formatından ilanları al
+      const ilanlarData = response.data.ilanlar || response.data;
+      setIlanlar(ilanlarData);
+      console.log('Admin ilanları yüklendi:', ilanlarData.length);
     } catch (error) {
       console.error('İlanları alma hatası:', error);
       setError('İlanlar yüklənə bilmədi.');
