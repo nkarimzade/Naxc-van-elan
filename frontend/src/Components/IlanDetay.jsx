@@ -163,8 +163,6 @@ function IlanDetay() {
                   src={ilan.sekiller[currentImageIndex]} 
                   alt={`${ilan.marka} ${ilan.model}`}
                   className="main-image"
-                  loading="lazy"
-                  decoding="async"
                 />
                 {ilan.sekiller.length > 1 && (
                   <>
@@ -190,8 +188,6 @@ function IlanDetay() {
                   src={image}
                   alt={`${ilan.marka} ${ilan.model} - ${index + 1}`}
                   className={`thumbnail ${index === currentImageIndex ? 'active' : ''}`}
-                  loading="lazy"
-                  decoding="async"
                   onClick={() => goToImage(index)}
                 />
               ))}

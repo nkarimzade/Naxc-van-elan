@@ -4,58 +4,9 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const compression = require('compression');
-const redis = require('redis');
 require('dotenv').config();
 
 const app = express();
-
-// Redis Client Setup
-let redisClient;
-try {
-  redisClient = redis.createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379'
-  });
-  redisClient.connect();
-  redisClient.on('connect', () => console.log('Redis bağlantısı uğurludur!'));
-  redisClient.on('error', (err) => console.log('Redis xətası:', err));
-} catch (err) {
-  console.log('Redis başlatılamadı, cache devre dışı:', err.message);
-  redisClient = null;
-}
-
-// Cache Middleware
-const cacheMiddleware = (duration = 300) => { // 5 dakika default
-  return async (req, res, next) => {
-    if (!redisClient) return next();
-    
-    const key = req.originalUrl;
-    
-    try {
-      const cachedData = await redisClient.get(key);
-      if (cachedData) {
-        console.log('Cache HIT:', key);
-        return res.json(JSON.parse(cachedData));
-      }
-      
-      // Cache MISS - original response'u yakala
-      const originalSend = res.json;
-      res.json = function(data) {
-        // Cache'e kaydet
-        redisClient.setEx(key, duration, JSON.stringify(data))
-          .catch(err => console.log('Cache kayıt hatası:', err));
-        console.log('Cache SET:', key);
-        
-        // Original response gönder
-        originalSend.call(this, data);
-      };
-      
-      next();
-    } catch (err) {
-      console.log('Cache middleware hatası:', err);
-      next();
-    }
-  };
-};
 
 // Response compression middleware (gzip)
 app.use(compression());
@@ -392,20 +343,6 @@ app.delete('/api/admin/reklam-talep/:id', authenticateToken, async (req, res) =>
   }
 });
 
-// Cache temizleme fonksiyonu
-const clearCache = async (pattern = '*') => {
-  if (!redisClient) return;
-  try {
-    const keys = await redisClient.keys(pattern);
-    if (keys.length > 0) {
-      await redisClient.del(keys);
-      console.log('Cache temizlendi:', keys.length, 'anahtar');
-    }
-  } catch (err) {
-    console.log('Cache temizleme hatası:', err);
-  }
-};
-
 // İlan ekle
 app.post('/api/ilan', checkImageSize, async (req, res) => {
   try {
@@ -422,10 +359,6 @@ app.post('/api/ilan', checkImageSize, async (req, res) => {
     const ilan = new Ilan(req.body);
     await ilan.save();
     console.log('İlan başarıyla kaydedildi. ID:', ilan._id);
-    
-    // Cache'i temizle (yeni ilan eklendiği için)
-    await clearCache('/api/ilan*');
-    
     res.status(201).json({ 
       message: 'İlan uğurla əlavə edildi.',
       id: ilan._id 
@@ -437,7 +370,7 @@ app.post('/api/ilan', checkImageSize, async (req, res) => {
 });
 
 // Hızlı ilan sayısı kontrol (cache invalidation için)
-app.get('/api/ilan/count', cacheMiddleware(60), async (req, res) => { // 1 dakika cache
+app.get('/api/ilan/count', async (req, res) => {
   try {
     const count = await Ilan.countDocuments({ onaylanmis: true });
     res.json({ count });
@@ -448,7 +381,7 @@ app.get('/api/ilan/count', cacheMiddleware(60), async (req, res) => { // 1 dakik
 });
 
 // İlanları getir (sadece onaylanmış) - Pagination ile
-app.get('/api/ilan', cacheMiddleware(180), async (req, res) => { // 3 dakika cache
+app.get('/api/ilan', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -481,7 +414,7 @@ app.get('/api/ilan', cacheMiddleware(180), async (req, res) => { // 3 dakika cac
 });
 
 // Hafif ilan listesi (sadece ilk görsel) - Ana sayfa için
-app.get('/api/ilan/list', cacheMiddleware(240), async (req, res) => { // 4 dakika cache
+app.get('/api/ilan/list', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -556,7 +489,7 @@ app.get('/api/admin/ilanlar', authenticateToken, async (req, res) => {
 });
 
 // Tek ilan getir
-app.get('/api/ilan/:id', cacheMiddleware(600), async (req, res) => { // 10 dakika cache
+app.get('/api/ilan/:id', async (req, res) => {
   try {
     const ilan = await Ilan.findById(req.params.id);
     if (!ilan) {
@@ -582,10 +515,6 @@ app.put('/api/admin/ilan/:id/onayla', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'İlan tapılmadı.' });
     }
     console.log('İlan onaylandı. ID:', req.params.id, 'Admin:', req.user.username);
-    
-    // Cache'i temizle (ilan onaylandığı için)
-    await clearCache('/api/ilan*');
-    
     res.json({ message: 'İlan onaylandı.', ilan });
   } catch (err) {
     console.error('İlan onaylama hatası:', err);
@@ -601,10 +530,6 @@ app.delete('/api/ilan/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'İlan tapılmadı.' });
     }
     console.log('İlan silindi. ID:', req.params.id, 'Admin:', req.user.username);
-    
-    // Cache'i temizle (ilan silindiği için)
-    await clearCache('/api/ilan*');
-    
     res.json({ message: 'İlan uğurla silindi.' });
   } catch (err) {
     console.error('İlan silmə xətası:', err);

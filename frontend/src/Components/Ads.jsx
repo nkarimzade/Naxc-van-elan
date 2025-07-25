@@ -23,10 +23,6 @@ function Ads() {
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Cache sistemi
-  const [cache, setCache] = useState(new Map());
-  const [lastFetchTime, setLastFetchTime] = useState(0);
-
   // Filtre state'leri
   const [filters, setFilters] = useState({
     marka: '',
@@ -80,63 +76,11 @@ function Ads() {
   // Marka seçimine göre modelleri filtrele
   const [availableModels, setAvailableModels] = useState([]);
 
-  // Background'da yeni ilan kontrol et
-  const checkForUpdates = async (baseURL, cachedTotalCount) => {
-    try {
-      const response = await axios.get(`${baseURL}/api/ilan/count`, {
-        timeout: 2000 // Daha hızlı check
-      });
-      
-      if (response.data.count !== cachedTotalCount) {
-        console.log('Yeni ilan tespit edildi! Cache temizleniyor...');
-        setCache(new Map()); // Cache'i temizle
-        
-        const notification = document.createElement('div');
-        notification.textContent = 'Yeni elanlar əlavə edildi! 🆕';
-        notification.style.cssText = `
-          position: fixed; top: 20px; right: 20px; z-index: 10000;
-          background: #10b981; color: white; padding: 12px 20px;
-          border-radius: 8px; font-size: 14px; animation: slideIn 0.3s ease;
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-      }
-    } catch (error) {
-      console.log('Background update check failed:', error.message);
-    }
-  };
+
 
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false, useProduction = false) => {
     try {
-      // Cache kontrolü - sadece ilk sayfa için
-      const cacheKey = `page_${page}_prod_${useProduction}`;
-      const now = Date.now();
-      const CACHE_DURATION = 2 * 60 * 1000; // 2 dakika cache (daha sık güncelleme)
-      
-      if (page === 1 && !isLoadMore && cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        if (now - cachedData.timestamp < CACHE_DURATION) {
-          console.log('Cache\'ten veri kullanılıyor:', cachedData.data.ilanlar.length, 'ilan');
-          setIlanlar(cachedData.data.ilanlar);
-          setFilteredIlanlar(cachedData.data.ilanlar);
-          setCurrentPage(cachedData.data.pagination.currentPage);
-          setTotalPages(cachedData.data.pagination.totalPages);
-          setTotalCount(cachedData.data.pagination.totalCount);
-          setLoading(false);
-          
-          // Background'da yeni veri kontrol et (silent update)
-          setTimeout(() => {
-            const bgBaseURL = useProduction || window.location.hostname !== 'localhost' 
-              ? 'https://naxc-van-elan-o2sr.onrender.com' 
-              : 'http://localhost:5000';
-            checkForUpdates(bgBaseURL, cachedData.data.pagination.totalCount);
-          }, 1000);
-          
-          return;
-        }
-      }
-
       if (!isLoadMore) {
         setLoadingText('Server ilə əlaqə qurulur...');
       } else {
@@ -160,7 +104,7 @@ function Ads() {
       console.log('API URL:', endpoint);
       
       const response = await axios.get(endpoint, {
-        timeout: baseURL.includes('localhost') ? 3000 : 15000 // Local: 3s, Production: 15s (daha hızlı)
+        timeout: baseURL.includes('localhost') ? 5000 : 10000 // Local: 5s, Production: 10s
       });
       
       if (!isLoadMore) {
@@ -170,19 +114,6 @@ function Ads() {
       
       console.log('Backend yanıtı:', response.data);
       const { ilanlar: newIlanlar, pagination } = response.data;
-      
-      // Cache'e kaydet (sadece ilk sayfa)
-      if (page === 1) {
-        setCache(prev => {
-          const newCache = new Map(prev);
-          newCache.set(cacheKey, {
-            data: response.data,
-            timestamp: now
-          });
-          return newCache;
-        });
-        console.log('Veri cache\'e kaydedildi');
-      }
       
       if (!isLoadMore) {
         setLoadingText('Elanlar hazırlanır...');
@@ -222,23 +153,17 @@ function Ads() {
         if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && 
             window.location.hostname === 'localhost' && !useProduction) {
           console.log('Local backend çalışmıyor, production\'a geçiliyor...');
-          setLoadingText('🔄 Local backend çalışmıyor. Production server\'a geçiliyor...');
-          await new Promise(resolve => setTimeout(resolve, 500));
+          setLoadingText('Local backend çalışmıyor. Production server\'a geçiliyor...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return fetchIlanlar(page, isLoadMore, true); // Production ile tekrar dene
         }
         
         if (error.code === 'ECONNABORTED') {
-          if (useProduction) {
-            setLoadingText('⚠️ Production server çox yavaş. Backend başlatın: cd backend && node app.js');
-          } else {
-            setLoadingText('⏰ Server timeout. 15 saniyədə cavab vermədi.');
-          }
+          setLoadingText('Server yavaş. Bir az daha gözləyin...');
         } else if (error.response?.status === 500) {
-          setLoadingText('🔧 Server xətası. Database problemi ola bilər.');
-        } else if (error.code === 'ERR_NETWORK') {
-          setLoadingText('🌐 Şəbəkə xətası. İnternet bağlantınızı yoxlayın.');
+          setLoadingText('Server xətası. Database problemi ola bilər.');
         } else {
-          setLoadingText('❌ Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
+          setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
         }
         
         // Error durumunda da bir süre bekle
@@ -438,25 +363,6 @@ function Ads() {
         <div className="loading-progress">
           <div className="loading-progress-bar"></div>
         </div>
-        
-        {/* Retry butonu - eğer timeout hatası varsa */}
-        {loadingText.includes('timeout') || loadingText.includes('yavaş') || loadingText.includes('çox') ? (
-          <div className="retry-section">
-            <button 
-              className="retry-btn"
-              onClick={() => {
-                setLoading(true);
-                setLoadingText('🔄 Yenidən cəhd edilir...');
-                fetchIlanlar(1, false, true); // Force production
-              }}
-            >
-              🔄 Yenidən Cəhd Et (Production)
-            </button>
-            <div className="retry-hint">
-              Və ya local backend başlatın: <code>cd backend && node app.js</code>
-            </div>
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -764,11 +670,10 @@ function Ads() {
           <button 
             className="refresh-cache-btn" 
             onClick={() => {
-              setCache(new Map());
-              setLastFetchTime(0);
+              setLoading(true);
               fetchIlanlar(1, false, false);
             }}
-            title="Cache'i temizle və yeni veri yükle"
+            title="Yeni veri yükle"
           >
             🔄 Yenilə
           </button>
@@ -776,19 +681,7 @@ function Ads() {
       </div>
 
       <div className="ads-grid">
-        {loading && filteredIlanlar.length === 0 ? (
-          // Skeleton loading
-          Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="ad-card skeleton">
-              <div className="skeleton-image"></div>
-              <div className="skeleton-content">
-                <div className="skeleton-title"></div>
-                <div className="skeleton-price"></div>
-                <div className="skeleton-hint"></div>
-              </div>
-            </div>
-          ))
-        ) : filteredIlanlar.length === 0 ? (
+        {filteredIlanlar.length === 0 ? (
           <p className="no-results">Bu filtrlərə uyğun elan tapılmadı.</p>
         ) : (
           filteredIlanlar.map(ilan => {
@@ -802,8 +695,6 @@ function Ads() {
                     src={firstImage} 
                     alt={`${ilan.marka} ${ilan.model}`}
                     className="car-image"
-                    loading="lazy"
-                    decoding="async"
                     onError={(e) => {
                       e.target.src = DEFAULT_IMAGE;
                     }}
