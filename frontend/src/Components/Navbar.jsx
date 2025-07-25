@@ -27,7 +27,7 @@ function Navbar() {
       </div>
 
       <div className={`nav-menu ${isOpen ? 'active' : ''}`}>
-        <Link to="/" className="nav-item" onClick={closeMenu}>Ana Shifə</Link>
+        <Link to="/" className="nav-item" onClick={closeMenu}>Ana Səhifə</Link>
         <Link to="/elan-yarat" className="nav-item" onClick={closeMenu}>Elan Yarat</Link>
       </div>
 
