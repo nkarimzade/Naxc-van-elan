@@ -84,7 +84,7 @@ function Ads() {
   const checkForUpdates = async (baseURL, cachedTotalCount) => {
     try {
       const response = await axios.get(`${baseURL}/api/ilan/count`, {
-        timeout: 3000 // Hızlı check
+        timeout: 2000 // Daha hızlı check
       });
       
       if (response.data.count !== cachedTotalCount) {
@@ -161,7 +161,7 @@ function Ads() {
       console.log('API URL:', endpoint);
       
       const response = await axios.get(endpoint, {
-        timeout: baseURL.includes('localhost') ? 5000 : 30000 // Local: 5s, Production: 30s
+        timeout: baseURL.includes('localhost') ? 3000 : 15000 // Local: 3s, Production: 15s (daha hızlı)
       });
       
       if (!isLoadMore) {
@@ -223,17 +223,23 @@ function Ads() {
         if ((error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') && 
             window.location.hostname === 'localhost' && !useProduction) {
           console.log('Local backend çalışmıyor, production\'a geçiliyor...');
-          setLoadingText('Local backend çalışmıyor. Production server\'a geçiliyor...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          setLoadingText('🔄 Local backend çalışmıyor. Production server\'a geçiliyor...');
+          await new Promise(resolve => setTimeout(resolve, 500));
           return fetchIlanlar(page, isLoadMore, true); // Production ile tekrar dene
         }
         
         if (error.code === 'ECONNABORTED') {
-          setLoadingText('Server yavaş. Bir az daha gözləyin...');
+          if (useProduction) {
+            setLoadingText('⚠️ Production server çox yavaş. Backend başlatın: cd backend && node app.js');
+          } else {
+            setLoadingText('⏰ Server timeout. 15 saniyədə cavab vermədi.');
+          }
         } else if (error.response?.status === 500) {
-          setLoadingText('Server xətası. Database problemi ola bilər.');
+          setLoadingText('🔧 Server xətası. Database problemi ola bilər.');
+        } else if (error.code === 'ERR_NETWORK') {
+          setLoadingText('🌐 Şəbəkə xətası. İnternet bağlantınızı yoxlayın.');
         } else {
-          setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
+          setLoadingText('❌ Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
         }
         
         // Error durumunda da bir süre bekle
@@ -433,6 +439,25 @@ function Ads() {
         <div className="loading-progress">
           <div className="loading-progress-bar"></div>
         </div>
+        
+        {/* Retry butonu - eğer timeout hatası varsa */}
+        {loadingText.includes('timeout') || loadingText.includes('yavaş') || loadingText.includes('çox') ? (
+          <div className="retry-section">
+            <button 
+              className="retry-btn"
+              onClick={() => {
+                setLoading(true);
+                setLoadingText('🔄 Yenidən cəhd edilir...');
+                fetchIlanlar(1, false, true); // Force production
+              }}
+            >
+              🔄 Yenidən Cəhd Et (Production)
+            </button>
+            <div className="retry-hint">
+              Və ya local backend başlatın: <code>cd backend && node app.js</code>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -752,7 +777,19 @@ function Ads() {
       </div>
 
       <div className="ads-grid">
-        {filteredIlanlar.length === 0 ? (
+        {loading && filteredIlanlar.length === 0 ? (
+          // Skeleton loading
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="ad-card skeleton">
+              <div className="skeleton-image"></div>
+              <div className="skeleton-content">
+                <div className="skeleton-title"></div>
+                <div className="skeleton-price"></div>
+                <div className="skeleton-hint"></div>
+              </div>
+            </div>
+          ))
+        ) : filteredIlanlar.length === 0 ? (
           <p className="no-results">Bu filtrlərə uyğun elan tapılmadı.</p>
         ) : (
           filteredIlanlar.map(ilan => {
