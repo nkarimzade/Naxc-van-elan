@@ -32,7 +32,7 @@ function Reklam() {
     setError('');
 
     try {
-      const response = await axios.post('https://naxc-van-elan.onrender.com/api/reklam-talep', formData);
+      const response = await axios.post('https://naxc-van-elan-o2sr.onrender.com/api/reklam-talep', formData);
       console.log('Reklam talebi gönderildi:', response.data);
       setSuccess(true);
       setFormData({
