@@ -16,7 +16,6 @@ function Ads() {
   const [filteredIlanlar, setFilteredIlanlar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState('Elanlar yüklənir...');
-  const [currentSlides, setCurrentSlides] = useState({});
   
   // Pagination state'leri
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,8 +88,9 @@ function Ads() {
       // Backend connection check
       console.log('Backend-ə sorğu göndərilir... Sayfa:', page);
       
-      // Hafif ilan listesi kullan (görselleri yüklemeden)
-      const response = await axios.get(`https://naxc-van-elan-o2sr.onrender.com/api/ilan/list?page=${page}&limit=20`, {
+      // Local development için localhost kullan
+      const baseURL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://naxc-van-elan-o2sr.onrender.com';
+      const response = await axios.get(`${baseURL}/api/ilan?page=${page}&limit=20`, {
         timeout: 10000 // 10 saniye timeout
       });
       
@@ -104,20 +104,9 @@ function Ads() {
       
       if (!isLoadMore) {
         setLoadingText('Elanlar hazırlanır...');
-      }
-      
-      // Her ilan için başlangıç slide index'i
-      const initialSlides = {};
-      newIlanlar.forEach(ilan => {
-        initialSlides[ilan._id] = 0;
-      });
-      
-      // Async operations tamamlansın diye bekleme
-      if (!isLoadMore) {
+        // Async operations tamamlansın diye bekleme
         await new Promise(resolve => setTimeout(resolve, 300));
       }
-      
-      setCurrentSlides(prev => ({ ...prev, ...initialSlides }));
       
       if (isLoadMore) {
         // Yeni ilanları mevcut listeye ekle
@@ -331,26 +320,7 @@ function Ads() {
     });
   };
 
-  const nextSlide = (ilanId, totalImages) => {
-    setCurrentSlides(prev => ({
-      ...prev,
-      [ilanId]: (prev[ilanId] + 1) % totalImages
-    }));
-  };
 
-  const prevSlide = (ilanId, totalImages) => {
-    setCurrentSlides(prev => ({
-      ...prev,
-      [ilanId]: prev[ilanId] === 0 ? totalImages - 1 : prev[ilanId] - 1
-    }));
-  };
-
-  const goToSlide = (ilanId, index) => {
-    setCurrentSlides(prev => ({
-      ...prev,
-      [ilanId]: index
-    }));
-  };
 
   const handleIlanClick = (ilanId) => {
     navigate(`/ilan/${ilanId}`);
@@ -684,62 +654,23 @@ function Ads() {
         ) : (
           filteredIlanlar.map(ilan => {
             const images = ilan.sekiller || [];
-            const currentSlide = currentSlides[ilan._id] || 0;
+            const firstImage = images.length > 0 ? images[0] : DEFAULT_IMAGE;
 
             return (
               <div key={ilan._id} className="ad-card" onClick={() => handleIlanClick(ilan._id)}>
-                <div className="image-slider">
-                  <div 
-                    className="image-container" 
-                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                  >
-                                      {images.map((image, index) => (
-                    <div key={index} className="slide">
-                      <img 
-                        src={image || DEFAULT_IMAGE} 
-                        alt={`${ilan.marka} ${ilan.model} - ${index + 1}`}
-                        className="car-image"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_IMAGE;
-                        }}
-                      />
-                    </div>
-                  ))}
-                  </div>
-
+                <div className="single-image-container">
+                  <img 
+                    src={firstImage} 
+                    alt={`${ilan.marka} ${ilan.model}`}
+                    className="car-image"
+                    onError={(e) => {
+                      e.target.src = DEFAULT_IMAGE;
+                    }}
+                  />
                   {images.length > 1 && (
-                    <>
-                      <button 
-                        className="slider-btn prev-btn" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          prevSlide(ilan._id, images.length);
-                        }}
-                      >
-                        &#10094;
-                      </button>
-                      <button 
-                        className="slider-btn next-btn" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          nextSlide(ilan._id, images.length);
-                        }}
-                      >
-                        &#10095;
-                      </button>
-                      <div className="slider-dots">
-                        {images.map((_, index) => (
-                          <button
-                            key={index}
-                            className={`slider-dot ${currentSlide === index ? 'active' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              goToSlide(ilan._id, index);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </>
+                    <div className="image-count-badge">
+                      {images.length} şəkil
+                    </div>
                   )}
                 </div>
                 <div className="ad-content">
