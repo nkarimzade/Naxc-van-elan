@@ -1,77 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Admin.css';
 
-const Admin = () => {
+function Admin() {
+  const navigate = useNavigate();
   const [ilanlar, setIlanlar] = useState([]);
   const [reklamTalepler, setReklamTalepler] = useState([]);
-  const [istatistikler, setIstatistikler] = useState({});
   const [loading, setLoading] = useState(true);
-  const [cacheStatus, setCacheStatus] = useState(null);
-  const [cacheLoading, setCacheLoading] = useState(false);
+  const [adminUser, setAdminUser] = useState(null);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('ilanlar');
+  const [istatistikler, setIstatistikler] = useState({
+    toplamIlan: 0,
+    onaylanmisIlan: 0,
+    bekleyenIlan: 0,
+    reddedilmisIlan: 0
+  });
 
-  const API_BASE_URL = 'https://naxc-van-elan-o2sr.onrender.com';
-
-  // Cache durumunu kontrol et
-  const checkCacheStatus = async () => {
-    try {
-      setCacheLoading(true);
-      // Geçici olarak cache kontrolünü devre dışı bırak
-      setCacheStatus({ 
-        status: 'disabled', 
-        message: 'Cache sistemi geçici olarak devre dışı',
-        cacheKeys: 0,
-        memoryUsage: 0
-      });
-    } catch (error) {
-      console.error('Cache durumu kontrol hatası:', error);
-      setCacheStatus({ 
-        status: 'error', 
-        message: 'Cache durumu alınamadı',
-        cacheKeys: 0,
-        memoryUsage: 0
-      });
-    } finally {
-      setCacheLoading(false);
-    }
-  };
-
-  // Cache'i temizle
-  const clearCache = async () => {
-    try {
-      setCacheLoading(true);
-      // Geçici olarak cache temizleme işlemini simüle et
-      alert('Cache sistemi geçici olarak devre dışı. Backend Redis kurulumu tamamlandıktan sonra aktif olacak.');
-      await checkCacheStatus(); // Durumu yenile
-    } catch (error) {
-      console.error('Cache temizleme hatası:', error);
-      alert('Cache temizlenirken hata oluştu!');
-    } finally {
-      setCacheLoading(false);
-    }
-  };
-
-  const checkAuth = async () => {
-    // Basit auth kontrolü - gerçek uygulamada JWT token kullanılmalı
-    const adminPassword = localStorage.getItem('adminPassword');
-    const adminUser = localStorage.getItem('adminUser');
-    
-    if (!adminPassword || adminPassword !== 'admin123' || !adminUser) {
-      console.log('❌ Admin yetkisi yok, login sayfasına yönlendiriliyor...');
-      window.location.href = '/admin/login';
-      return false;
-    }
-    
-    console.log('✅ Admin yetkisi doğrulandı');
-    return true;
-  };
-
-  const fetchIlanlar = async () => {
-    try {
-      console.log('📋 İlanlar yükleniyor...');
+  // Token kontrolü ve admin doğrulama
+  useEffect(() => {
+    const checkAuth = async () => {
+      console.log('🔐 Admin auth kontrolü başladı...');
       const startTime = Date.now();
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/ilanlar`, { 
+      const token = localStorage.getItem('adminToken');
+      const user = localStorage.getItem('adminUser');
+
+      if (!token || !user) {
+        console.log('❌ Token veya user bulunamadı, login sayfasına yönlendiriliyor...');
+        navigate('/admin/login');
+        return;
+      }
+
+      try {
+        console.log('✅ Token ve user bulundu, veriler yükleniyor...');
+          setAdminUser(JSON.parse(user));
+        
+        console.log('📊 İstatistikler yükleniyor...');
+        await fetchIstatistikler();
+        
+        console.log('📋 İlanlar yükleniyor...');
+        await fetchIlanlar();
+        
+        console.log('📢 Reklam talepleri yükleniyor...');
+        await fetchReklamTalepler();
+        
+        const endTime = Date.now();
+        console.log(`✅ Admin paneli yüklendi! Süre: ${endTime - startTime}ms`);
+        
+      } catch (error) {
+        console.error('❌ Auth kontrolü başarısız:', error);
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        navigate('/admin/login');
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  // İlanları getir
+  const fetchIlanlar = async () => {
+    try {
+      console.log('🔄 İlanlar yükleniyor...');
+      const startTime = Date.now();
+      setLoading(true);
+      
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/ilanlar', {
         timeout: 60000 // 60 saniye timeout
       });
       
@@ -81,23 +77,51 @@ const Admin = () => {
       setIlanlar(response.data);
     } catch (error) {
       console.error('❌ İlanları alma hatası:', error);
-      console.error('❌ Hata detayları:', error.response?.data || error.message);
-      
-      if (error.code === 'ECONNABORTED') {
-        alert('⏰ İlanlar yüklenirken zaman aşımı oluştu. Lütfen tekrar deneyin.');
-      } else {
-        alert('❌ İlanlar yüklenirken hata oluştu. Lütfen sayfayı yenileyin.');
-      }
+      console.error('❌ Hata detayları:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        code: error.code,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          timeout: error.config?.timeout
+        }
+      });
+      setError('İlanlar yüklənə bilmədi. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // İstatistikleri getir
+  const fetchIstatistikler = async () => {
+    try {
+      console.log('📊 İstatistikler yükleniyor...');
+      const startTime = Date.now();
+      
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/istatistikler', {
+        timeout: 5000 // 5 saniye timeout
+      });
+      
+      const endTime = Date.now();
+      console.log(`✅ İstatistikler yüklendi (${endTime - startTime}ms):`, response.data);
+      
+      setIstatistikler(response.data);
+    } catch (error) {
+      console.error('❌ İstatistik alma hatası:', error);
+    }
+  };
+
+  // Reklam taleplerini getir
   const fetchReklamTalepler = async () => {
     try {
       console.log('📢 Reklam talepleri yükleniyor...');
       const startTime = Date.now();
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/reklam-talepler`, { 
-        timeout: 10000 
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talepler', {
+        timeout: 5000 // 5 saniye timeout
       });
       
       const endTime = Date.now();
@@ -105,143 +129,177 @@ const Admin = () => {
       
       setReklamTalepler(response.data);
     } catch (error) {
-      console.error('❌ Reklam talepleri alma hatası:', error);
+      console.error('❌ Reklam talepler alma hatası:', error);
     }
   };
 
-  const fetchIstatistikler = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/istatistikler`, { 
-        timeout: 10000 
-      });
-      setIstatistikler(response.data);
-    } catch (error) {
-      console.error('❌ İstatistik alma hatası:', error);
-    }
-  };
-
-  useEffect(() => {
-    const init = async () => {
-      const isAuth = await checkAuth();
-      if (!isAuth) return;
-
-      const startTime = Date.now();
-      
-      try {
-        await Promise.all([
-          fetchIlanlar(),
-          fetchReklamTalepler(),
-          fetchIstatistikler(),
-          checkCacheStatus()
-        ]);
-        
-        const endTime = Date.now();
-        console.log(`✅ Admin paneli yüklendi! Süre: ${endTime - startTime}ms`);
-      } catch (error) {
-        console.error('❌ Admin paneli yükleme hatası:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, []);
-
+  // İlan onayla/reddet
   const onaylaIlan = async (ilanId, onaylandi, redSebebi = '') => {
     try {
-      const adminAdi = 'Admin'; // Gerçek uygulamada giriş yapan admin adı
+      const adminAdi = adminUser?.username || 'Admin';
       
-      await axios.put(`${API_BASE_URL}/api/admin/ilan/${ilanId}`, {
+      await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`, {
         onaylandi,
         redSebebi,
         adminAdi
-      }, { timeout: 10000 });
-
-      // İlanları ve istatistikleri yenile
-      await Promise.all([
-        fetchIlanlar(),
-        fetchIstatistikler()
-      ]);
-
-      alert(onaylandi ? '✅ İlan onaylandı!' : '❌ İlan reddedildi!');
+      });
+      
+      // İlan listesini güncelle
+      setIlanlar(prevIlanlar => 
+        prevIlanlar.map(ilan => 
+          ilan._id === ilanId ? { ...ilan, onaylandi, redSebebi } : ilan
+        )
+      );
+      
+      // İstatistikleri güncelle
+      await fetchIstatistikler();
+      
+      console.log('İlan durumu güncellendi:', ilanId, onaylandi ? 'onaylandı' : 'reddedildi');
     } catch (error) {
-      console.error('❌ İlan onaylama hatası:', error);
-      alert('❌ İşlem sırasında hata oluştu!');
+      console.error('İlan onaylama hatası:', error);
+      alert('İlan güncəllənə bilmədi.');
     }
   };
 
+  // İlan sil
   const silIlan = async (ilanId) => {
-    if (!window.confirm('⚠️ Bu ilanı silmek istediğinizden emin misiniz?')) {
+    if (!window.confirm('Bu ilanı silmək istədiyinizə əminsiniz?')) {
       return;
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/admin/ilan/${ilanId}`, { 
-        timeout: 10000 
-      });
-
-      // İlanları ve istatistikleri yenile
-      await Promise.all([
-        fetchIlanlar(),
-        fetchIstatistikler()
-      ]);
-
-      alert('✅ İlan başarıyla silindi!');
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`);
+      
+      // İlan listesinden kaldır
+      setIlanlar(prevIlanlar => prevIlanlar.filter(ilan => ilan._id !== ilanId));
+      
+      // İstatistikleri güncelle
+      await fetchIstatistikler();
+      
+      console.log('İlan silindi:', ilanId);
     } catch (error) {
-      console.error('❌ İlan silme hatası:', error);
-      alert('❌ İlan silinirken hata oluştu!');
+      console.error('İlan silme hatası:', error);
+      alert('İlan silinə bilmədi.');
     }
   };
 
+  // Tüm ilanları sil
   const tumIlanlariSil = async () => {
-    if (!window.confirm('⚠️ TÜM İLANLARI SİLMEK istediğinizden emin misiniz? Bu işlem geri alınamaz!')) {
+    const onay = window.confirm(
+      'DİKKAT: Bu işlem tüm ilanları kalıcı olarak silecek!\n\n' +
+      'Bu işlem geri alınamaz. Devam etmek istediğinizden emin misiniz?'
+    );
+    
+    if (!onay) {
       return;
     }
 
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/admin/ilanlar/tumunu-sil`, { 
-        timeout: 30000 
-      });
-
+      const response = await axios.delete('https://naxc-van-elan-o2sr.onrender.com/api/admin/ilanlar/tumunu-sil');
+      
+      // İlan listesini temizle
       setIlanlar([]);
-      setIstatistikler({
-        toplamIlan: 0,
-        onaylanmisIlan: 0,
-        bekleyenIlan: 0,
-        reddedilmisIlan: 0
+      
+      // İstatistikleri güncelle
+      await fetchIstatistikler();
+      
+      alert(`${response.data.deletedCount} ilan başarıyla silindi!`);
+      console.log('Tüm ilanlar silindi:', response.data.deletedCount);
+    } catch (error) {
+      console.error('Toplu silme hatası:', error);
+      alert('İlanlar silinə bilmədi.');
+    }
+  };
+
+  // Reklam talep durumu güncelle
+  const updateReklamDurum = async (talepId, durum, adminQeyd = '') => {
+    try {
+      await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}/durum`, {
+        durum,
+        adminQeyd
       });
-
-      alert(`✅ ${response.data.deletedCount} ilan başarıyla silindi!`);
+      
+      // Talep listesini güncelle
+      setReklamTalepler(prevTalepler => 
+        prevTalepler.map(talep => 
+          talep._id === talepId ? { ...talep, durum, adminQeyd } : talep
+        )
+      );
+      
+      console.log('Reklam talep durumu güncellendi:', talepId, durum);
     } catch (error) {
-      console.error('❌ Tüm ilanları silme hatası:', error);
-      alert('❌ İlanlar silinirken hata oluştu!');
+      console.error('Durum güncelleme hatası:', error);
+      alert('Durum güncəllənə bilmədi.');
     }
   };
 
-  const updateReklamDurum = async (talepId, durum) => {
-    try {
-      // Bu fonksiyon şimdilik boş - reklam talepleri henüz implement edilmedi
-      alert(`Reklam talebi ${durum === 'onayla' ? 'onaylandı' : 'reddedildi'}!`);
-    } catch (error) {
-      console.error('Reklam durum güncelleme hatası:', error);
-    }
-  };
-
+  // Reklam talebi sil
   const silReklamTalep = async (talepId) => {
+    if (!window.confirm('Bu reklam tələbini silmək istədiyinizə əminsiniz?')) {
+      return;
+    }
+
     try {
-      // Bu fonksiyon şimdilik boş - reklam talepleri henüz implement edilmedi
-      alert('Reklam talebi silindi!');
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}`);
+      
+      // Talep listesinden kaldır
+      setReklamTalepler(prevTalepler => prevTalepler.filter(talep => talep._id !== talepId));
+      console.log('Reklam talebi silindi:', talepId);
     } catch (error) {
       console.error('Reklam talep silme hatası:', error);
+      alert('Reklam tələbi silinə bilmədi.');
     }
+  };
+
+  // Çıkış yap
+  const logout = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    navigate('/admin/login');
+  };
+
+  // Yenile
+  const refreshData = () => {
+    if (activeTab === 'ilanlar') {
+      fetchIlanlar();
+      fetchIstatistikler();
+    } else {
+      fetchReklamTalepler();
+    }
+  };
+
+  // Durum rengini belirle
+  const getDurumColor = (durum) => {
+    switch (durum) {
+      case 'Yeni': return '#f59e0b';
+      case 'İnceleniyor': return '#3b82f6';
+      case 'Cavablandırıldı': return '#10b981';
+      case 'Rədd edildi': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  // Tarih formatla
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('az-AZ', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <div className="admin-container">
-        <div className="loading">
-          <h2>Admin Paneli Yükleniyor...</h2>
-          <p>⏰ Bu işlem biraz zaman alabilir, lütfen bekleyin...</p>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">Admin paneli yüklənir...</div>
+        <div className="loading-subtext">
+          {adminUser ? 'İlanlar və tələplər əldə edilir' : 'Yetkilendirme yoxlanılır'}
+        </div>
+        <div className="loading-progress">
+          <div className="loading-progress-bar"></div>
         </div>
       </div>
     );
@@ -249,186 +307,264 @@ const Admin = () => {
 
   return (
     <div className="admin-container">
-      <h1>Admin Paneli</h1>
-      
-      {/* Cache Durumu */}
-      <div className="cache-section">
-        <h3>🔥 Cache Durumu</h3>
-        <div className="cache-info">
-          {cacheLoading ? (
-            <p>Cache durumu kontrol ediliyor...</p>
-          ) : cacheStatus ? (
-            <div>
-              <p><strong>Durum:</strong> 
-                {cacheStatus.status === 'active' ? '✅ Aktif' : 
-                 cacheStatus.status === 'disabled' ? '⚠️ Devre Dışı' : '❌ Hata'}
-              </p>
-              <p><strong>Cache Anahtarları:</strong> {cacheStatus.cacheKeys || 0}</p>
-              <p><strong>Bellek Kullanımı:</strong> {cacheStatus.memoryUsage ? `${(cacheStatus.memoryUsage / 1024 / 1024).toFixed(2)} MB` : 'Bilinmiyor'}</p>
-              {cacheStatus.status === 'disabled' && (
-                <p style={{color: '#f59e0b', fontSize: '0.9rem', marginTop: '10px'}}>
-                  ℹ️ {cacheStatus.message}
-                </p>
-              )}
+      <div className="admin-header">
+        <div className="admin-header-left">
+          <h1>Admin Paneli</h1>
+          <p>İlanları və reklam tələplərini idarə edin</p>
+        </div>
+        <div className="admin-header-right">
+          {adminUser && (
+            <div className="admin-user-info">
+              <span>Xoş gəlmisiniz, <strong>{adminUser.username}</strong></span>
+              <button onClick={logout} className="logout-btn">
+                Çıxış
+              </button>
             </div>
-          ) : (
-            <p>Cache durumu alınamadı</p>
           )}
-          <button 
-            onClick={clearCache} 
-            disabled={cacheLoading}
-            className="clear-cache-btn"
-          >
-            {cacheLoading ? 'Temizleniyor...' : '🗑️ Cache Temizle'}
-          </button>
         </div>
       </div>
 
-      {/* İstatistikler */}
-      <div className="stats-section">
-        <h3>📊 İstatistikler</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h4>Toplam İlan</h4>
-            <p>{istatistikler.toplamIlan || 0}</p>
-          </div>
-          <div className="stat-card">
-            <h4>Onaylanmış</h4>
-            <p>{istatistikler.onaylanmisIlan || 0}</p>
-          </div>
-          <div className="stat-card">
-            <h4>Bekleyen</h4>
-            <p>{istatistikler.bekleyenIlan || 0}</p>
-          </div>
-          <div className="stat-card">
-            <h4>Reddedilmiş</h4>
-            <p>{istatistikler.reddedilmisIlan || 0}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tüm İlanları Sil Butonu */}
-      <div className="danger-section">
-        <button onClick={tumIlanlariSil} className="delete-all-btn">
-          🗑️ Tüm İlanları Sil
+      {/* Tab Navigation */}
+      <div className="admin-tabs">
+        <button 
+          className={`tab-btn ${activeTab === 'ilanlar' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ilanlar')}
+        >
+          İlanlar ({ilanlar.length})
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'reklam' ? 'active' : ''}`}
+          onClick={() => setActiveTab('reklam')}
+        >
+          Reklam Tələpləri ({reklamTalepler.length})
         </button>
       </div>
 
-      {/* İlanlar */}
-      <div className="ilanlar-section">
-        <h3>📋 İlanlar ({ilanlar.length})</h3>
-        {ilanlar.length === 0 ? (
-          <p>Henüz ilan bulunmuyor.</p>
-        ) : (
-          <div className="ilanlar-grid">
-            {ilanlar.map((ilan) => (
-              <div key={ilan._id} className="ilan-card">
-                <div className="ilan-image">
-                  {ilan.sekiller && ilan.sekiller.length > 0 ? (
-                    <img src={ilan.sekiller[0]} alt="Araç" />
-                  ) : (
-                    <div className="no-image">Görsel Yok</div>
-                  )}
-                </div>
-                <div className="ilan-info">
-                  <h4>{ilan.marka} {ilan.model}</h4>
-                  <p><strong>Yıl:</strong> {ilan.buraxilis}</p>
-                  <p><strong>Fiyat:</strong> {ilan.qiymet} {ilan.qiymetTip}</p>
-                  <p><strong>Şehir:</strong> {ilan.seher}</p>
-                  <p><strong>İletişim:</strong> {ilan.telefon}</p>
-                  <p><strong>E-posta:</strong> {ilan.email}</p>
-                  <p><strong>Oluşturma:</strong> {new Date(ilan.olusturmaTarihi).toLocaleDateString('tr-TR')}</p>
-                  
-                  <div className="ilan-status">
-                    {ilan.onaylandi ? (
-                      <span className="status approved">✅ Onaylandı</span>
-                    ) : (
-                      <span className="status pending">⏳ Bekliyor</span>
-                    )}
-                  </div>
-                  
-                  {ilan.redSebebi && (
-                    <div className="reject-reason">
-                      <strong>Red Sebebi:</strong> {ilan.redSebebi}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="ilan-actions">
-                  {!ilan.onaylandi ? (
-                    <>
-                      <button 
-                        onClick={() => onaylaIlan(ilan._id, true)}
-                        className="approve-btn"
-                      >
-                        ✅ Onayla
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const reason = prompt('Red sebebini yazın:');
-                          if (reason !== null) {
-                            onaylaIlan(ilan._id, false, reason);
-                          }
-                        }}
-                        className="reject-btn"
-                      >
-                        ❌ Reddet
-                      </button>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={() => onaylaIlan(ilan._id, false)}
-                      className="unapprove-btn"
-                    >
-                      🔄 Onayı Kaldır
-                    </button>
-                  )}
-                  
-                  <button 
-                    onClick={() => silIlan(ilan._id)}
-                    className="delete-btn"
-                  >
-                    🗑️ Sil
-                  </button>
-                </div>
-              </div>
-            ))}
+      {activeTab === 'ilanlar' ? (
+        <>
+          <div className="admin-stats">
+            <div className="stat-card">
+              <h3>Toplam İlan</h3>
+              <p className="stat-number">{istatistikler.toplamIlan}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Onaylanmış</h3>
+              <p className="stat-number">{istatistikler.onaylanmisIlan}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Bekleyen</h3>
+              <p className="stat-number">{istatistikler.bekleyenIlan}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Reddedilmiş</h3>
+              <p className="stat-number">{istatistikler.reddedilmisIlan}</p>
+            </div>
+            <div className="stat-card">
+              <button onClick={refreshData} className="refresh-btn">
+                Yenilə
+              </button>
+            </div>
+            <div className="stat-card">
+              <button onClick={tumIlanlariSil} className="delete-all-btn">
+                Tüm İlanları Sil
+              </button>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Reklam Talepleri */}
-      <div className="reklam-section">
-        <h3>📢 Reklam Talepleri ({reklamTalepler.length})</h3>
-        {reklamTalepler.length === 0 ? (
-          <p>Henüz reklam talebi bulunmuyor.</p>
-        ) : (
-          <div className="reklam-grid">
-            {reklamTalepler.map((talep) => (
-              <div key={talep._id} className="reklam-card">
-                <h4>{talep.ad}</h4>
-                <p><strong>E-posta:</strong> {talep.email}</p>
-                <p><strong>Telefon:</strong> {talep.telefon}</p>
-                <p><strong>Mesaj:</strong> {talep.mesaj}</p>
-                
-                <div className="reklam-actions">
-                  <button onClick={() => updateReklamDurum(talep._id, 'onayla')}>
-                    ✅ Onayla
-                  </button>
-                  <button onClick={() => updateReklamDurum(talep._id, 'reddet')}>
-                    ❌ Reddet
-                  </button>
-                  <button onClick={() => silReklamTalep(talep._id)}>
-                    🗑️ Sil
-                  </button>
-                </div>
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
+          <div className="admin-content">
+            {ilanlar.length === 0 ? (
+              <p className="no-data">Heç bir ilan tapılmadı.</p>
+            ) : (
+              <div className="ilanlar-grid">
+                {ilanlar.map(ilan => (
+                  <div key={ilan._id} className={`ilan-card ${!ilan.onaylandi ? 'pending' : 'approved'}`}>
+                    <div className="ilan-status">
+                      <span className={`status-badge ${ilan.onaylandi ? 'approved' : 'pending'}`}>
+                        {ilan.onaylandi ? 'Onaylanmış' : 'Gözləyir'}
+                      </span>
+                      {ilan.redSebebi && (
+                        <span className="reject-reason">Red: {ilan.redSebebi}</span>
+                      )}
+                    </div>
+                    
+                    <div className="ilan-image">
+                      {ilan.sekiller && ilan.sekiller.length > 0 ? (
+                        <img src={ilan.sekiller[0]} alt={`${ilan.marka} ${ilan.model}`} />
+                      ) : (
+                        <div className="no-image">Şəkil yoxdur</div>
+                      )}
+                    </div>
+                    
+                    <div className="ilan-info">
+                      <h3>
+                        {ilan.marka} {ilan.model}
+                      </h3>
+                      <p className="ilan-price">{ilan.qiymet} {ilan.qiymetTip}</p>
+                      <div className="ilan-details">
+                        <span>{ilan.buraxilis} il</span>
+                        <span>{ilan.yurush} {ilan.yurushTip}</span>
+                        <span>{ilan.seher}</span>
+                      </div>
+                      <div className="ilan-contact">
+                        <p><strong>Ad:</strong> {ilan.ad}</p>
+                        <p><strong>Telefon:</strong> {ilan.telefon}</p>
+                        <p><strong>Email:</strong> {ilan.email}</p>
+                      </div>
+                      <div className="ilan-date">
+                        <span>Oluşturma: {formatDate(ilan.olusturmaTarihi)}</span>
+                        {ilan.onayTarihi && (
+                          <span>Onay: {formatDate(ilan.onayTarihi)}</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="ilan-actions">
+                      {!ilan.onaylandi ? (
+                        <>
+                          <button 
+                            onClick={() => onaylaIlan(ilan._id, true)}
+                            className="approve-btn"
+                          >
+                            Onayla
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const redSebebi = prompt('Red sebebini yazın:');
+                              if (redSebebi !== null) {
+                                onaylaIlan(ilan._id, false, redSebebi);
+                              }
+                            }}
+                            className="reject-btn"
+                          >
+                            Reddet
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          onClick={() => onaylaIlan(ilan._id, false)}
+                          className="unapprove-btn"
+                        >
+                          Onayı Kaldır
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => navigate(`/ilan/${ilan._id}`)}
+                        className="view-btn"
+                      >
+                        Bax
+                      </button>
+                      <button 
+                        onClick={() => silIlan(ilan._id)}
+                        className="delete-btn"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="admin-stats">
+            <div className="stat-card">
+              <h3>Toplam Tələb</h3>
+              <p className="stat-number">{reklamTalepler.length}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Yeni</h3>
+              <p className="stat-number">{reklamTalepler.filter(t => t.durum === 'Yeni').length}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Cavablandırıldı</h3>
+              <p className="stat-number">{reklamTalepler.filter(t => t.durum === 'Cavablandırıldı').length}</p>
+            </div>
+            <div className="stat-card">
+              <button onClick={refreshData} className="refresh-btn">
+                Yenilə
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-content">
+            {reklamTalepler.length === 0 ? (
+              <p className="no-data">Heç bir reklam tələbi tapılmadı.</p>
+            ) : (
+              <div className="reklam-grid">
+                {reklamTalepler.map(talep => (
+                  <div key={talep._id} className="reklam-card">
+                    <div className="reklam-header">
+                      <div className="reklam-info">
+                        <h3>{talep.ad}</h3>
+                        <p className="reklam-company">{talep.sirket || 'Şirkət bilgisi yox'}</p>
+                      </div>
+                      <div 
+                        className="durum-badge"
+                        style={{ backgroundColor: getDurumColor(talep.durum) }}
+                      >
+                        {talep.durum}
+                      </div>
+                    </div>
+                    
+                    <div className="reklam-details">
+                      <div className="detail-row">
+                        <strong>E-mail:</strong> {talep.email}
+                      </div>
+                      <div className="detail-row">
+                        <strong>Telefon:</strong> {talep.telefon}
+                      </div>
+                      <div className="detail-row">
+                        <strong>Reklam Növü:</strong> {talep.reklamNovu}
+                      </div>
+                      {talep.budjce && (
+                        <div className="detail-row">
+                          <strong>Büdcə:</strong> {talep.budjce}
+                        </div>
+                      )}
+                      <div className="detail-row">
+                        <strong>Mesaj:</strong>
+                        <p className="mesaj-text">{talep.mesaj}</p>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Tarix:</strong> {formatDate(talep.createdAt)}
+                      </div>
+                    </div>
+
+                    <div className="reklam-actions">
+                      <select 
+                        value={talep.durum}
+                        onChange={(e) => updateReklamDurum(talep._id, e.target.value)}
+                        className="durum-select"
+                      >
+                        <option value="Yeni">Yeni</option>
+                        <option value="İnceleniyor">İnceleniyor</option>
+                        <option value="Cavablandırıldı">Cavablandırıldı</option>
+                        <option value="Rədd edildi">Rədd edildi</option>
+                      </select>
+                      <button 
+                        onClick={() => silReklamTalep(talep._id)}
+                        className="delete-btn"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
-};
+}
 
 export default Admin; 

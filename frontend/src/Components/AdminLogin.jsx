@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import './AdminLogin.css';
 
 function AdminLogin() {
@@ -25,25 +26,22 @@ function AdminLogin() {
     setError('');
 
     try {
-      // Basit admin kontrolü - gerçek uygulamada backend'de kontrol edilmeli
-      if (formData.username === 'admin' && formData.password === 'admin123') {
-        // Admin bilgilerini localStorage'a kaydet
-        localStorage.setItem('adminPassword', formData.password);
-        localStorage.setItem('adminUser', JSON.stringify({
-          username: formData.username,
-          role: 'admin'
-        }));
-        
-        console.log('✅ Admin girişi başarılı:', formData.username);
-        navigate('/admin');
-        
-      } else {
-        setError('❌ Yanlış kullanıcı adı veya şifre!');
-      }
+      const response = await axios.post('https://naxc-van-elan-o2sr.onrender.com/api/admin/login', formData);
+      const { token, admin } = response.data;
+      
+      localStorage.setItem('adminToken', token);
+      localStorage.setItem('adminUser', JSON.stringify(admin));
+      
+      console.log('Admin girişi başarılı:', admin.username);
+      navigate('/admin');
       
     } catch (error) {
-      console.error('❌ Giriş hatası:', error);
-      setError('❌ Giriş sırasında hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Giriş hatası:', error);
+      if (error.response?.data?.error) {
+        setError(error.response.data.error);
+      } else {
+        setError('Giriş edilə bilmədi. Xahiş edirik yenidən cəhd edin.');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,7 +51,7 @@ function AdminLogin() {
     <div className="admin-login-container">
       <div className="admin-login-card">
         <div className="admin-login-header">
-          <h2>🔐 Admin Girişi</h2>
+          <h2>Admin Girişi</h2>
           <p>NaxAuto Admin Paneli</p>
         </div>
 
@@ -65,7 +63,7 @@ function AdminLogin() {
 
         <form onSubmit={handleSubmit} className="admin-login-form">
           <div className="input-container">
-            <label htmlFor="username">👤 Kullanıcı Adı</label>
+            <label htmlFor="username">İstifadəçi Adı</label>
             <input
               type="text"
               id="username"
@@ -74,13 +72,12 @@ function AdminLogin() {
               onChange={handleChange}
               required
               disabled={loading}
-              placeholder="Kullanıcı adınızı girin"
-              autoComplete="username"
+              placeholder="İstifadəçi adınızı daxil edin"
             />
           </div>
 
           <div className="input-container">
-            <label htmlFor="password">🔒 Şifre</label>
+            <label htmlFor="password">Şifrə</label>
             <input
               type="password"
               id="password"
@@ -89,8 +86,7 @@ function AdminLogin() {
               onChange={handleChange}
               required
               disabled={loading}
-              placeholder="Şifrenizi girin"
-              autoComplete="current-password"
+              placeholder="Şifrənizi daxil edin"
             />
           </div>
 
@@ -99,17 +95,12 @@ function AdminLogin() {
             className="login-btn"
             disabled={loading || !formData.username || !formData.password}
           >
-            {loading ? '🔄 Giriş yapılıyor...' : '🚀 Giriş Yap'}
+            {loading ? 'Giriş edilir...' : 'Daxil ol'}
           </button>
         </form>
 
         <div className="admin-login-footer">
-          <div className="login-info">
-            <h4>📋 Test Bilgileri:</h4>
-            <p><strong>Kullanıcı Adı:</strong> admin</p>
-            <p><strong>Şifre:</strong> admin123</p>
-          </div>
-          <p>⚠️ Bu test hesabıdır. Gerçek uygulamada güvenli bir sistem kullanın.</p>
+          <p>Admin hesabınız yoxdursa, sistem administratoru ilə əlaqə saxlayın.</p>
         </div>
       </div>
     </div>
