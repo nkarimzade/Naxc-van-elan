@@ -181,8 +181,19 @@ function CreateAd() {
   // Görsel seçildiğinde
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length < 1 || files.length > 4) {
-      alert("Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz!");
+    
+    console.log('📸 Görsel seçimi:', {
+      dosyaSayisi: files.length,
+      dosyalar: files.map(f => ({ name: f.name, size: f.size, type: f.type }))
+    });
+    
+    if (files.length < 1) {
+      alert("Ən azı 1 şəkil seçməlisiniz!");
+      return;
+    }
+    
+    if (files.length > 4) {
+      alert("Maksimum 4 şəkil seçə bilərsiniz!");
       return;
     }
     
@@ -198,11 +209,16 @@ function CreateAd() {
       console.log('📸 Görseller yükleniyor...');
       // Her görseli yeniden boyutlandır ve kaliteyi düşür
       const base64Files = await Promise.all(files.map(file => resizeImage(file, 1024, 0.7)));
+      
+      console.log('✅ Görseller başarıyla yüklendi:', {
+        yuklenenSayi: base64Files.length,
+        dosyaAdlari: files.map(f => f.name)
+      });
+      
       setForm({...form, sekiller: base64Files});
-      console.log(`✅ ${base64Files.length} görsel yüklendi`);
     } catch (err) {
       console.error('❌ Şəkil yükləmə xətası:', err);
-      alert('Şəkil yükləmə xətası baş verdi!');
+      alert('Şəkil yükləmə xətası baş verdi! Lütfen başqa şəkillər seçin.');
     }
   };
 
@@ -210,8 +226,18 @@ function CreateAd() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.sekiller || form.sekiller.length < 1 || form.sekiller.length > 4) {
-      alert("Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz!");
+    console.log('📋 Form gönderimi başladı:', {
+      sekillerSayisi: form.sekiller ? form.sekiller.length : 0,
+      sekiller: form.sekiller ? 'Mevcut' : 'Yok'
+    });
+    
+    if (!form.sekiller || form.sekiller.length < 1) {
+      alert("Ən azı 1 şəkil əlavə etməlisiniz!");
+      return;
+    }
+    
+    if (form.sekiller.length > 4) {
+      alert("Maksimum 4 şəkil əlavə edə bilərsiniz!");
       return;
     }
 
@@ -476,7 +502,7 @@ function CreateAd() {
         {/* Şəkillər */}
         <label>Şəkillər *</label>
         <div style={{marginBottom: '6px', color: '#1976d2', fontSize: '0.98rem', fontWeight: 500}}>
-          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB - backend avtomatik sıxışdıracaq)
+          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB)
         </div>
         <input 
           type="file" 
@@ -484,7 +510,14 @@ function CreateAd() {
           accept="image/*" 
           onChange={handleImageChange}
           required 
+          style={{marginBottom: '10px'}}
         />
+        {/* Seçilen görsellerin sayısı */}
+        {form.sekiller && form.sekiller.length > 0 && (
+          <div style={{marginBottom: '10px', color: '#666', fontSize: '0.9rem'}}>
+            ✅ {form.sekiller.length} şəkil seçildi
+          </div>
+        )}
         {/* Seçilen görsellerin önizlemesi */}
         {form.sekiller && form.sekiller.length > 0 && (
           <div className="image-preview">
@@ -498,7 +531,8 @@ function CreateAd() {
                   height: '100px', 
                   objectFit: 'cover',
                   margin: '5px',
-                  borderRadius: '4px'
+                  borderRadius: '4px',
+                  border: '2px solid #ddd'
                 }}
               />
             ))}

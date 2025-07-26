@@ -35,7 +35,7 @@ function Admin() {
 
       try {
         console.log('✅ Token ve user bulundu, veriler yükleniyor...');
-        setAdminUser(JSON.parse(user));
+          setAdminUser(JSON.parse(user));
         
         console.log('📊 İstatistikler yükleniyor...');
         await fetchIstatistikler();

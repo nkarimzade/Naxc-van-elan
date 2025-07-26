@@ -81,7 +81,7 @@ function Ads() {
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false) => {
     let timeoutWarningTimer;
-    try {
+      try {
       if (!isLoadMore) {
         setLoadingText('Elanlar yüklənir...');
         // 10 saniye sonra uyarı mesajı göster
@@ -105,7 +105,7 @@ function Ads() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
         
-      console.log('Backend yanıtı:', response.data);
+        console.log('Backend yanıtı:', response.data);
       const newIlanlar = Array.isArray(response.data) ? response.data : [];
         
       if (!isLoadMore) {
@@ -133,21 +133,21 @@ function Ads() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
         
-      console.log('Elanlar yüklendi:', newIlanlar.length, 'adet.');
-      setLoading(false);
+              console.log('Elanlar yüklendi:', newIlanlar.length, 'adet.');
+        setLoading(false);
       setLoadingMore(false);
         
-    } catch (error) {
-      console.error('Elan yükleme hatası:', error);
-      console.error('Hata detayları:', error.response?.data || error.message);
-      setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setLoading(false);
-      setLoadingMore(false);
+      } catch (error) {
+        console.error('Elan yükleme hatası:', error);
+        console.error('Hata detayları:', error.response?.data || error.message);
+          setLoadingText('Elanlar yüklənə bilmədi. Yenidən cəhd edin.');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setLoading(false);
+        setLoadingMore(false);
     } finally {
       if (timeoutWarningTimer) clearTimeout(timeoutWarningTimer);
-    }
-  };
+      }
+    };
 
   useEffect(() => {
     fetchIlanlar(1, false);
