@@ -192,14 +192,6 @@ function CreateAd() {
       return;
     }
     
-    // Dosya boyutu kontrolü - 10MB'a kadar izin ver
-    for (let file of files) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        alert(`'${file.name}' şəkli 10 MB-dan böyükdür! Daha kiçik şəkil seçin.`);
-        return;
-      }
-    }
-    
     try {
       console.log('📸 Görseller yükleniyor...');
       // Her görseli yeniden boyutlandır ve kaliteyi düşür
@@ -492,7 +484,7 @@ function CreateAd() {
         {/* Şəkillər */}
         <label>Şəkillər *</label>
         <div style={{marginBottom: '6px', color: '#1976d2', fontSize: '0.98rem', fontWeight: 500}}>
-          Ən coxu 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB)
+          Ən coxu 4 şəkil əlavə edə bilərsiniz
         </div>
         <input 
           type="file" 

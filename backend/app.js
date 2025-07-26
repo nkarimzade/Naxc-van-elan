@@ -9,19 +9,19 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Büyük resimler için limit artırıldı
 
 // Node.js için görsel sıkıştırma
-const compressImageNode = async (base64String, maxSizeKB = 300) => {
+const compressImageNode = async (base64String, maxSizeKB = 150) => {
   try {
     // Base64'ten buffer'a çevir
     const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
     // Sharp ile sıkıştır
-    let quality = 80;
+    let quality = 60; // Başlangıç kalitesini düşürdük
     let compressedBuffer;
     
     do {
       compressedBuffer = await sharp(buffer)
-        .resize(1200, 1200, { 
+        .resize(800, 800, { // Boyutu daha da küçülttük
           fit: 'inside', 
           withoutEnlargement: true 
         })
@@ -31,12 +31,12 @@ const compressImageNode = async (base64String, maxSizeKB = 300) => {
       const sizeKB = compressedBuffer.length / 1024;
       console.log(`📸 Görsel sıkıştırma: ${sizeKB.toFixed(1)}KB, Kalite: ${quality}%`);
       
-      if (sizeKB <= maxSizeKB || quality <= 10) {
+      if (sizeKB <= maxSizeKB || quality <= 5) { // Minimum kaliteyi daha da düşürdük
         break;
       }
       
-      quality -= 10;
-    } while (quality > 10);
+      quality -= 15; // Daha hızlı kalite düşürme
+    } while (quality > 5);
     
     // Buffer'ı base64'e çevir
     const compressedBase64 = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
@@ -183,7 +183,7 @@ app.post('/api/ilan', async (req, res) => {
       console.log(`📸 Görsel ${i + 1}: ${originalSizeKB.toFixed(1)}KB -> sıkıştırılıyor...`);
       
       try {
-        const compressedImage = await compressImageNode(originalImage, 300); // 300KB limit
+        const compressedImage = await compressImageNode(originalImage, 150); // 150KB limit
         const compressedSizeKB = (compressedImage.length * 0.75) / 1024;
         
         console.log(`✅ Görsel ${i + 1}: ${originalSizeKB.toFixed(1)}KB -> ${compressedSizeKB.toFixed(1)}KB`);
