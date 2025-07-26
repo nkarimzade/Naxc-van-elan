@@ -3,10 +3,67 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const sharp = require('sharp');
+const redis = require('redis');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Büyük resimler için limit artırıldı
+
+// Redis bağlantısı
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+redisClient.on('error', (err) => console.log('❌ Redis Client Error:', err));
+redisClient.on('connect', () => console.log('✅ Redis bağlantısı başarılı!'));
+
+// Redis bağlantısını başlat
+(async () => {
+  await redisClient.connect();
+})();
+
+// Cache fonksiyonları
+const cacheMiddleware = (duration = 300) => { // 5 dakika varsayılan
+  return async (req, res, next) => {
+    try {
+      const key = `cache:${req.originalUrl}`;
+      const cachedData = await redisClient.get(key);
+      
+      if (cachedData) {
+        console.log(`⚡ Cache hit: ${req.originalUrl}`);
+        return res.json(JSON.parse(cachedData));
+      }
+      
+      // Cache miss - orijinal response'u yakala
+      const originalSend = res.json;
+      res.json = function(data) {
+        redisClient.setEx(key, duration, JSON.stringify(data))
+          .then(() => console.log(`💾 Cache saved: ${req.originalUrl}`))
+          .catch(err => console.error('❌ Cache save error:', err));
+        
+        return originalSend.call(this, data);
+      };
+      
+      next();
+    } catch (error) {
+      console.error('❌ Cache middleware error:', error);
+      next(); // Cache hatası durumunda normal devam et
+    }
+  };
+};
+
+// Cache temizleme fonksiyonu
+const clearCache = async (pattern = '*') => {
+  try {
+    const keys = await redisClient.keys(`cache:${pattern}`);
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+      console.log(`🗑️ Cache cleared: ${keys.length} keys`);
+    }
+  } catch (error) {
+    console.error('❌ Cache clear error:', error);
+  }
+};
 
 // Node.js için görsel sıkıştırma
 const compressImageNode = async (base64String, maxSizeKB = 150) => {
@@ -239,6 +296,9 @@ app.post('/api/ilan', async (req, res) => {
     
     console.log(`✅ Yeni ilan oluşturuldu: ${finalMarka} ${finalModel}`);
     
+    // Cache'i temizle - yeni ilan eklendiğinde
+    await clearCache('*');
+    
     res.status(201).json({ 
       message: 'İlan başarıyla oluşturuldu ve onay için gönderildi',
       ilanId: yeniIlan._id,
@@ -254,8 +314,8 @@ app.post('/api/ilan', async (req, res) => {
   }
 });
 
-// Onaylanmış ilanları getir (public)
-app.get('/api/ilan', async (req, res) => {
+// Onaylanmış ilanları getir (public) - 5 dakika cache
+app.get('/api/ilan', cacheMiddleware(300), async (req, res) => {
   try {
     const ilanlar = await Ilan.find({ onaylandi: true })
       .sort({ olusturmaTarihi: -1 })
@@ -268,8 +328,8 @@ app.get('/api/ilan', async (req, res) => {
   }
 });
 
-// Belirli bir ilanı getir (public)
-app.get('/api/ilan/:id', async (req, res) => {
+// Belirli bir ilanı getir (public) - 10 dakika cache
+app.get('/api/ilan/:id', cacheMiddleware(600), async (req, res) => {
   try {
     const ilan = await Ilan.findOne({ _id: req.params.id, onaylandi: true });
     
@@ -284,8 +344,8 @@ app.get('/api/ilan/:id', async (req, res) => {
   }
 });
 
-// Admin için optimize edilmiş ilan listesi (sadece gerekli alanlar ve ilk görsel)
-app.get('/api/admin/ilanlar', async (req, res) => {
+// Admin için optimize edilmiş ilan listesi - 2 dakika cache
+app.get('/api/admin/ilanlar', cacheMiddleware(120), async (req, res) => {
   try {
     console.log('📋 Admin ilanlar isteği alındı...');
     const startTime = Date.now();
@@ -351,6 +411,9 @@ app.put('/api/admin/ilan/:id', async (req, res) => {
       return res.status(404).json({ error: 'İlan bulunamadı' });
     }
     
+    // Cache'i temizle - ilan durumu değiştiğinde
+    await clearCache('*');
+    
     res.json({ 
       message: onaylandi ? 'İlan onaylandı' : 'İlan reddedildi',
       ilan 
@@ -371,6 +434,9 @@ app.delete('/api/admin/ilan/:id', async (req, res) => {
       return res.status(404).json({ error: 'İlan bulunamadı' });
     }
     
+    // Cache'i temizle - ilan silindiğinde
+    await clearCache('*');
+    
     res.json({ 
       message: 'İlan başarıyla silindi',
       ilanId: req.params.id 
@@ -382,13 +448,13 @@ app.delete('/api/admin/ilan/:id', async (req, res) => {
   }
 });
 
-// Admin için reklam taleplerini getir (şimdilik boş dizi)
-app.get('/api/admin/reklam-talepler', (req, res) => {
+// Admin için reklam taleplerini getir (şimdilik boş dizi) - 5 dakika cache
+app.get('/api/admin/reklam-talepler', cacheMiddleware(300), (req, res) => {
   res.json([]);
 });
 
-// İstatistikler
-app.get('/api/admin/istatistikler', async (req, res) => {
+// İstatistikler - 5 dakika cache
+app.get('/api/admin/istatistikler', cacheMiddleware(300), async (req, res) => {
   try {
     console.log('📊 İstatistik isteği alındı...');
     const startTime = Date.now();
@@ -420,8 +486,54 @@ app.get('/api/admin/istatistikler', async (req, res) => {
   }
 });
 
+// Tüm ilanları sil - cache'i de temizle
+app.delete('/api/admin/ilanlar/tumunu-sil', async (req, res) => {
+  try {
+    const result = await Ilan.deleteMany({});
+    
+    // Cache'i temizle
+    await clearCache('*');
+    
+    res.json({ 
+      message: 'Tüm ilanlar başarıyla silindi',
+      deletedCount: result.deletedCount 
+    });
+    
+  } catch (error) {
+    console.error('Tüm ilanları silme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// Cache durumu endpoint'i (debug için)
+app.get('/api/cache/status', async (req, res) => {
+  try {
+    const keys = await redisClient.keys('cache:*');
+    const memory = await redisClient.memoryUsage();
+    
+    res.json({
+      cacheKeys: keys.length,
+      memoryUsage: memory,
+      status: 'active'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Cache status error' });
+  }
+});
+
+// Cache temizleme endpoint'i (admin için)
+app.delete('/api/cache/clear', async (req, res) => {
+  try {
+    await clearCache('*');
+    res.json({ message: 'Cache başarıyla temizlendi' });
+  } catch (error) {
+    res.status(500).json({ error: 'Cache clear error' });
+  }
+});
+
 // Sunucu başlat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend ${PORT} portunda çalışıyor!`);
+  console.log('🔥 Redis cache aktif!');
 }); 
