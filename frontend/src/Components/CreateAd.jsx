@@ -127,16 +127,52 @@ function CreateAd() {
     });
   };
 
+  // Görseli yeniden boyutlandıran fonksiyon
+  const resizeImage = (file, maxWidth = 1024, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.onerror = (err) => reject(err);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((maxWidth / width) * height);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Kaliteyi düşürerek base64'e çevir
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    });
+  };
+
   // Görsel seçildiğinde
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length < 1 || files.length > 8) {
-      alert("Minimum 1, maksimum 8 şəkil əlavə edə bilərsiniz!");
+    if (files.length < 1 || files.length > 4) {
+      alert("Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz!");
       return;
     }
-
+    for (let file of files) {
+      if (file.size > 1048576) {
+        alert(`'${file.name}' şəkli 1 MB-dan böyükdür! Daha kiçik şəkil seçin.`);
+        return;
+      }
+    }
     try {
-      const base64Files = await Promise.all(files.map(file => fileToBase64(file)));
+      // Her görseli yeniden boyutlandır ve kaliteyi düşür
+      const base64Files = await Promise.all(files.map(file => resizeImage(file, 1024, 0.7)));
       setForm({...form, sekiller: base64Files});
     } catch (err) {
       console.error('Şəkil yükləmə xətası:', err);
@@ -148,8 +184,8 @@ function CreateAd() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.sekiller || form.sekiller.length < 1 || form.sekiller.length > 8) {
-      alert("Minimum 1, maksimum 8 şəkil əlavə edə bilərsiniz!");
+    if (!form.sekiller || form.sekiller.length < 1 || form.sekiller.length > 4) {
+      alert("Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz!");
       return;
     }
 
@@ -384,7 +420,7 @@ function CreateAd() {
         {/* Şəkillər */}
         <label>Şəkillər *</label>
         <div style={{marginBottom: '6px', color: '#1976d2', fontSize: '0.98rem', fontWeight: 500}}>
-          Minimum 1, maksimum 8 şəkil əlavə edə bilərsiniz
+          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 1 MB)
         </div>
         <input 
           type="file" 

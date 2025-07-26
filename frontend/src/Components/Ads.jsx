@@ -80,16 +80,16 @@ function Ads() {
 
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false, useProduction = false) => {
-    try {
+      try {
       if (!isLoadMore) {
         setLoadingText('Server ilə əlaqə qurulur...');
       } else {
         setLoadingMore(true);
       }
-      
-      // Backend connection check
+        
+        // Backend connection check
       console.log('Backend-ə sorğu göndərilir... Sayfa:', page);
-      
+        
       // URL seçimi - local fallback varsa production kullan
       let baseURL;
       if (useProduction || window.location.hostname !== 'localhost') {
@@ -105,16 +105,16 @@ function Ads() {
       
       const response = await axios.get(endpoint, {
         timeout: baseURL.includes('localhost') ? 5000 : 10000 // Local: 5s, Production: 10s
-      });
-      
+        });
+        
       if (!isLoadMore) {
         setLoadingText('Elanlar işlənir...');
         await new Promise(resolve => setTimeout(resolve, 500)); // Smooth transition
       }
-      
-      console.log('Backend yanıtı:', response.data);
+        
+        console.log('Backend yanıtı:', response.data);
       const { ilanlar: newIlanlar, pagination } = response.data;
-      
+        
       if (!isLoadMore) {
         setLoadingText('Elanlar hazırlanır...');
         // Async operations tamamlansın diye bekleme
@@ -140,12 +140,12 @@ function Ads() {
         setLoadingText('Elanlar yükləndi!');
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
+        
       console.log('Elanlar yüklendi:', newIlanlar.length, 'adet. Toplam:', pagination.totalCount);
-      setLoading(false);
+        setLoading(false);
       setLoadingMore(false);
-      
-          } catch (error) {
+        
+      } catch (error) {
         console.error('Elan yükleme hatası:', error);
         console.error('Hata detayları:', error.response?.data || error.message);
         
@@ -170,8 +170,8 @@ function Ads() {
         await new Promise(resolve => setTimeout(resolve, 2000));
         setLoading(false);
         setLoadingMore(false);
-    }
-  };
+      }
+    };
 
   useEffect(() => {
     fetchIlanlar(1, false, false);
@@ -691,18 +691,18 @@ function Ads() {
             return (
               <div key={ilan._id} className="ad-card" onClick={() => handleIlanClick(ilan._id)}>
                 <div className="single-image-container">
-                  <img 
+                      <img 
                     src={firstImage} 
                     alt={`${ilan.marka} ${ilan.model}`}
-                    className="car-image"
-                    onError={(e) => {
-                      e.target.src = DEFAULT_IMAGE;
-                    }}
-                  />
+                        className="car-image"
+                        onError={(e) => {
+                          e.target.src = DEFAULT_IMAGE;
+                        }}
+                      />
                   {images.length > 1 && (
                     <div className="image-count-badge">
                       {images.length} şəkil
-                    </div>
+                      </div>
                   )}
                 </div>
                 <div className="ad-content">

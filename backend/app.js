@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const compression = require('compression');
 require('dotenv').config();
+const sharp = require('sharp');
 
 const app = express();
 
@@ -346,6 +347,30 @@ app.delete('/api/admin/reklam-talep/:id', authenticateToken, async (req, res) =>
 // İlan ekle
 app.post('/api/ilan', checkImageSize, async (req, res) => {
   try {
+    // Görselleri optimize et
+    if (req.body.sekiller && Array.isArray(req.body.sekiller)) {
+      const optimizedSekiller = [];
+      for (let base64 of req.body.sekiller) {
+        // Sadece data:image/jpeg;base64,... veya data:image/png;base64,... ise
+        const matches = base64.match(/^data:(image\/jpeg|image\/png);base64,(.+)$/);
+        if (matches) {
+          const buffer = Buffer.from(matches[2], 'base64');
+          // Sharp ile yeniden boyutlandır ve kaliteyi düşür
+          const outputBuffer = await sharp(buffer)
+            .resize({ width: 1024 }) // Maksimum genişlik 1024px
+            .jpeg({ quality: 70 })   // Kalite %70
+            .toBuffer();
+          // Tekrar base64'e çevir
+          const optimizedBase64 = 'data:image/jpeg;base64,' + outputBuffer.toString('base64');
+          optimizedSekiller.push(optimizedBase64);
+        } else {
+          // Geçerli değilse olduğu gibi ekle
+          optimizedSekiller.push(base64);
+        }
+      }
+      req.body.sekiller = optimizedSekiller;
+    }
+    
     console.log('Gelen görsel sayısı:', req.body.sekiller?.length || 0);
     
     // Görsel boyutlarını logla
