@@ -165,10 +165,10 @@ app.post('/api/ilan', async (req, res) => {
     }
     
     // Görsel kontrolü
-    if (!ilanData.sekiller || ilanData.sekiller.length < 1 || ilanData.sekiller.length > 4) {
+    if (!ilanData.sekiller || ilanData.sekiller.length < 1) {
       return res.status(400).json({ 
         error: 'Görsel hatası', 
-        detail: 'Minimum 1, maksimum 4 görsel gereklidir' 
+        detail: 'En az 1 görsel gereklidir' 
       });
     }
     

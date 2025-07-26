@@ -192,11 +192,6 @@ function CreateAd() {
       return;
     }
     
-    if (files.length > 4) {
-      alert("Maksimum 4 şəkil seçə bilərsiniz!");
-      return;
-    }
-    
     // Dosya boyutu kontrolü - 10MB'a kadar izin ver
     for (let file of files) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
@@ -236,11 +231,6 @@ function CreateAd() {
       return;
     }
     
-    if (form.sekiller.length > 4) {
-      alert("Maksimum 4 şəkil əlavə edə bilərsiniz!");
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitSuccess(false);
 
@@ -502,7 +492,7 @@ function CreateAd() {
         {/* Şəkillər */}
         <label>Şəkillər *</label>
         <div style={{marginBottom: '6px', color: '#1976d2', fontSize: '0.98rem', fontWeight: 500}}>
-          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB)
+          Ən coxu 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB)
         </div>
         <input 
           type="file" 
