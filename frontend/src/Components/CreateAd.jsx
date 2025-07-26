@@ -105,7 +105,28 @@ function CreateAd() {
 
   // Marka değişince model ve otherModel sıfırlansın
   const handleMarkaChange = e => {
-    setForm({ ...form, marka: e.target.value, model: '', otherMarka: '', otherModel: '' });
+    const selectedMarka = e.target.value;
+    console.log('🔧 Marka seçildi:', selectedMarka);
+    
+    if (selectedMarka === 'Diğər') {
+      // Diğər marka seçildiğinde model'i de "Diğər" yap
+      setForm({ 
+        ...form, 
+        marka: selectedMarka, 
+        model: 'Diğər', 
+        otherMarka: '', 
+        otherModel: '' 
+      });
+      console.log('🔧 Diğər marka seçildi, model "Diğər" yapıldı');
+    } else {
+      setForm({ 
+        ...form, 
+        marka: selectedMarka, 
+        model: '', 
+        otherMarka: '', 
+        otherModel: '' 
+      });
+    }
   };
 
   // Rəng seçimi
@@ -164,18 +185,23 @@ function CreateAd() {
       alert("Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz!");
       return;
     }
+    
+    // Dosya boyutu kontrolü - 10MB'a kadar izin ver
     for (let file of files) {
-      if (file.size > 1048576) {
-        alert(`'${file.name}' şəkli 1 MB-dan böyükdür! Daha kiçik şəkil seçin.`);
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert(`'${file.name}' şəkli 10 MB-dan böyükdür! Daha kiçik şəkil seçin.`);
         return;
       }
     }
+    
     try {
+      console.log('📸 Görseller yükleniyor...');
       // Her görseli yeniden boyutlandır ve kaliteyi düşür
       const base64Files = await Promise.all(files.map(file => resizeImage(file, 1024, 0.7)));
       setForm({...form, sekiller: base64Files});
+      console.log(`✅ ${base64Files.length} görsel yüklendi`);
     } catch (err) {
-      console.error('Şəkil yükləmə xətası:', err);
+      console.error('❌ Şəkil yükləmə xətası:', err);
       alert('Şəkil yükləmə xətası baş verdi!');
     }
   };
@@ -192,6 +218,18 @@ function CreateAd() {
     setIsSubmitting(true);
     setSubmitSuccess(false);
 
+    // Debug: Form verilerini kontrol et
+    console.log('📋 Form verileri:', {
+      marka: form.marka,
+      model: form.model,
+      otherMarka: form.otherMarka,
+      otherModel: form.otherModel,
+      isOtherMarka,
+      isOtherModel,
+      finalMarka: form.marka === 'Diğər' ? form.otherMarka : form.marka,
+      finalModel: (form.marka === 'Diğər' || form.model === 'Diğər') ? form.otherModel : form.model
+    });
+
     // Sayısal alanları number'a çevir
     const ilanData = {
       ...form,
@@ -203,7 +241,7 @@ function CreateAd() {
     };
 
     try {
-      const res = await fetch("https://naxc-van-elan-o2sr.onrender.com/api/ilan", {
+      const res = await fetch("http://localhost:5000/api/ilan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ilanData),
@@ -215,10 +253,16 @@ function CreateAd() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const error = await res.json();
-        alert(error.detail || "Xəta baş verdi!");
+        console.error('❌ Backend hatası:', error);
+        console.error('❌ Hata detayları:', {
+          status: res.status,
+          statusText: res.statusText,
+          error: error
+        });
+        alert(error.detail || error.error || "Xəta baş verdi!");
       }
     } catch (err) {
-      console.error(err);
+      console.error('❌ Bağlantı hatası:', err);
       alert("Bağlantı xətası!");
     } finally {
       setIsSubmitting(false);
@@ -286,15 +330,23 @@ function CreateAd() {
             type="text"
             placeholder="Model adını yazın"
             value={form.otherModel}
-            onChange={e => setForm({...form, otherModel: e.target.value})}
+            onChange={e => {
+              const otherModelValue = e.target.value;
+              console.log('🔧 Other model yazıldı:', otherModelValue);
+              setForm({...form, otherModel: otherModelValue});
+            }}
             required
           />
         ) : (
           <select
             value={form.model}
-            onChange={e => setForm({...form, model: e.target.value, otherModel: ''})}
+            onChange={e => {
+              const selectedModel = e.target.value;
+              console.log('🔧 Model seçildi:', selectedModel);
+              setForm({...form, model: selectedModel, otherModel: ''});
+            }}
             required
-            disabled={!form.marka || isOtherMarka}
+            disabled={!form.marka}
           >
             <option value="">Seçin</option>
             {form.marka && markaModeller[form.marka] && markaModeller[form.marka].map(model => (
@@ -308,7 +360,11 @@ function CreateAd() {
             type="text"
             placeholder="Model adını yazın"
             value={form.otherModel}
-            onChange={e => setForm({...form, otherModel: e.target.value})}
+            onChange={e => {
+              const otherModelValue = e.target.value;
+              console.log('🔧 Other model yazıldı:', otherModelValue);
+              setForm({...form, otherModel: otherModelValue});
+            }}
             required
             style={{marginTop: 8}}
           />
@@ -420,7 +476,7 @@ function CreateAd() {
         {/* Şəkillər */}
         <label>Şəkillər *</label>
         <div style={{marginBottom: '6px', color: '#1976d2', fontSize: '0.98rem', fontWeight: 500}}>
-          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 1 MB)
+          Minimum 1, maksimum 4 şəkil əlavə edə bilərsiniz (hər biri max 10 MB - backend avtomatik sıxışdıracaq)
         </div>
         <input 
           type="file" 

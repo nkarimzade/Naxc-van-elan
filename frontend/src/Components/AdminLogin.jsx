@@ -26,7 +26,7 @@ function AdminLogin() {
     setError('');
 
     try {
-      const response = await axios.post('https://naxc-van-elan-o2sr.onrender.com/api/admin/login', formData);
+      const response = await axios.post('http://localhost:5000/api/admin/login', formData);
       const { token, admin } = response.data;
       
       localStorage.setItem('adminToken', token);

@@ -1,568 +1,427 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const compression = require('compression');
-require('dotenv').config();
 const sharp = require('sharp');
 
 const app = express();
-
-// Response compression middleware (gzip)
-app.use(compression());
 app.use(cors());
+app.use(express.json({ limit: '50mb' })); // Büyük resimler için limit artırıldı
 
-// Daha makul dosya boyutu limiti (10MB)
-app.use(express.json({limit: '10mb'}));
-app.use(express.urlencoded({limit: '10mb', extended: true}));
-
-// Görsel boyutu kontrol middleware'i
-const checkImageSize = (req, res, next) => {
-  if (req.body.sekiller && Array.isArray(req.body.sekiller)) {
-    const maxImages = 8;
-    const maxSizePerImage = 2 * 1024 * 1024; // 2MB per image in base64
+// Node.js için görsel sıkıştırma
+const compressImageNode = async (base64String, maxSizeKB = 300) => {
+  try {
+    // Base64'ten buffer'a çevir
+    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
     
-    if (req.body.sekiller.length > maxImages) {
-      return res.status(400).json({ 
-        error: `Maksimum ${maxImages} şəkil yükləyə bilərsiniz.` 
-      });
-    }
+    // Sharp ile sıkıştır
+    let quality = 80;
+    let compressedBuffer;
     
-    for (let i = 0; i < req.body.sekiller.length; i++) {
-      const imageSize = Buffer.byteLength(req.body.sekiller[i], 'base64');
-      if (imageSize > maxSizePerImage) {
-        return res.status(400).json({ 
-          error: `${i + 1}. şəkil çox böyükdür. Maksimum 2MB olmalıdır.` 
-        });
+    do {
+      compressedBuffer = await sharp(buffer)
+        .resize(1200, 1200, { 
+          fit: 'inside', 
+          withoutEnlargement: true 
+        })
+        .jpeg({ quality })
+        .toBuffer();
+      
+      const sizeKB = compressedBuffer.length / 1024;
+      console.log(`📸 Görsel sıkıştırma: ${sizeKB.toFixed(1)}KB, Kalite: ${quality}%`);
+      
+      if (sizeKB <= maxSizeKB || quality <= 10) {
+        break;
       }
-    }
+      
+      quality -= 10;
+    } while (quality > 10);
+    
+    // Buffer'ı base64'e çevir
+    const compressedBase64 = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
+    return compressedBase64;
+    
+  } catch (error) {
+    console.error('❌ Görsel sıkıştırma hatası:', error);
+    return base64String; // Hata durumunda orijinal görseli döndür
   }
-  next();
 };
-
-// JWT Secret (production'da .env dosyasında olmalı)
-const JWT_SECRET = process.env.JWT_SECRET || 'naxcivan-elan-secret-key-2024';
 
 // MongoDB bağlantısı
-mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/naxcivan-elan')
-  .then(() => {
-    console.log('MongoDB bağlantısı uğurludur!');
-    // Performance için indexleri oluştur
-    createDatabaseIndexes();
-  })
-  .catch((err) => console.error('MongoDB bağlantı xətası:', err));
-
-// Database indexlerini oluştur
-const createDatabaseIndexes = async () => {
-  try {
-    // İlan koleksiyonu için indexler
-    await mongoose.connection.db.collection('ilans').createIndex({ createdAt: -1 });
-    await mongoose.connection.db.collection('ilans').createIndex({ onaylanmis: 1 });
-    await mongoose.connection.db.collection('ilans').createIndex({ marka: 1 });
-    await mongoose.connection.db.collection('ilans').createIndex({ seher: 1 });
-    await mongoose.connection.db.collection('ilans').createIndex({ qiymet: 1 });
-    
-    // Reklam talep koleksiyonu için index
-    await mongoose.connection.db.collection('reklamtaleps').createIndex({ createdAt: -1 });
-    
-    console.log('Database indexleri oluşturuldu!');
-  } catch (err) {
-    console.error('Index oluşturma hatası:', err);
-  }
-};
-
-// Admin kullanıcı şeması
-const adminSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  email: { type: String },
-  role: { type: String, default: 'admin' },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const Admin = mongoose.model('Admin', adminSchema);
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log('MongoDB bağlantısı başarılı!'))
+  .catch((err) => console.error('MongoDB bağlantı hatası:', err));
 
 // İlan şeması
 const ilanSchema = new mongoose.Schema({
-  marka: String,
-  model: String,
+  // Araç bilgileri
+  marka: { type: String, required: true },
+  model: { type: String, required: true },
   otherMarka: String,
   otherModel: String,
-  ban: String,
-  muherrik: String,
-  yanacaq: String,
-  oturucu: String,
-  suret: String,
-  hecm: Number,
-  guc: Number,
+  buraxilis: { type: Number, required: true },
+  ban: { type: String, required: true },
+  muherrik: { type: String, required: true },
+  yanacaq: { type: String, required: true },
+  oturucu: { type: String, required: true },
+  suret: { type: String, required: true },
+  hecm: { type: Number, required: true },
+  guc: { type: Number, required: true },
   yerler: Number,
   bazar: String,
-  reng: String,
-  yurush: Number,
-  yurushTip: String,
-  sekiller: [String], // Base64 görsel dizisi
+  reng: { type: String, required: true },
+  yurush: { type: Number, required: true },
+  yurushTip: { type: String, default: 'km' },
+  
+  // Görseller ve özellikler
+  sekiller: [{ type: String, required: true }], // Base64 formatında
   techizat: [String],
-  vuruq: Boolean,
-  renglenib: Boolean,
-  qezali: Boolean,
+  
+  // Araç durumu
+  vuruq: { type: Boolean, default: false },
+  renglenib: { type: Boolean, default: false },
+  qezali: { type: Boolean, default: false },
   vin: String,
   elave: String,
-  seher: String,
-  qiymet: Number,
-  qiymetTip: String,
-  kredit: Boolean,
-  barter: Boolean,
-  ad: String,
-  email: String,
-  telefon: String,
-  onaylanmis: { type: Boolean, default: false },
-  buraxilis: Number
-}, { timestamps: true });
-
-const Ilan = mongoose.model('Ilan', ilanSchema);
-
-// Reklam talep şeması
-const reklamTalepSchema = new mongoose.Schema({
+  
+  // Konum ve fiyat
+  seher: { type: String, default: 'Naxçıvan' },
+  qiymet: { type: Number, required: true },
+  qiymetTip: { type: String, default: 'AZN' },
+  kredit: { type: Boolean, default: false },
+  barter: { type: Boolean, default: false },
+  
+  // İletişim bilgileri
   ad: { type: String, required: true },
   email: { type: String, required: true },
   telefon: { type: String, required: true },
-  sirket: String,
-  reklamNovu: { 
-    type: String, 
-    required: true,
-    enum: ['Banner Reklam', 'Sponsored İlan', 'Premium Listing', 'Digər']
-  },
-  mesaj: { type: String, required: true },
-  budjce: String,
-  durum: { 
-    type: String, 
-    default: 'Yeni',
-    enum: ['Yeni', 'İnceleniyor', 'Cavablandırıldı', 'Rədd edildi']
-  },
-  adminQeyd: String
-}, { timestamps: true });
-
-const ReklamTalep = mongoose.model('ReklamTalep', reklamTalepSchema);
-
-// JWT Middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    return res.status(401).json({ error: 'Token yoxdur, giriş etməlisiniz.' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token yanlışdır.' });
-    }
-    req.user = user;
-    next();
-  });
-};
-
-// Admin oluştur (Postman ile çağrılacak)
-app.post('/api/admin/create', async (req, res) => {
-  try {
-    const { username, password, email } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'İstifadəçi adı və şifrə məcburidur.' });
-    }
-
-    // Admin var mı kontrol et
-    const existingAdmin = await Admin.findOne({ username });
-    if (existingAdmin) {
-      return res.status(400).json({ error: 'Bu istifadəçi adı artıq mövcuddur.' });
-    }
-
-    // Şifreyi hash'le
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Yeni admin oluştur
-    const admin = new Admin({
-      username,
-      password: hashedPassword,
-      email
-    });
-
-    await admin.save();
-    console.log('Yeni admin oluşturuldu:', username);
-    
-    res.status(201).json({ 
-      message: 'Admin uğurla yaradıldı.',
-      admin: { username, email, role: admin.role }
-    });
-  } catch (err) {
-    console.error('Admin oluşturma hatası:', err);
-    res.status(500).json({ error: 'Admin yaradıla bilmədi.' });
-  }
+  
+  // Sistem bilgileri
+  onaylandi: { type: Boolean, default: false },
+  onayTarihi: Date,
+  onaylayanAdmin: String,
+  redSebebi: String,
+  olusturmaTarihi: { type: Date, default: Date.now },
+  guncellemeTarihi: { type: Date, default: Date.now }
 });
 
-// Admin giriş
-app.post('/api/admin/login', async (req, res) => {
+const Ilan = mongoose.model('Ilan', ilanSchema);
+
+// Yeni ilan oluştur
+app.post('/api/ilan', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    console.log('📝 Yeni ilan isteği alındı...');
+    const ilanData = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({ error: 'İstifadəçi adı və şifrə məcburidur.' });
-    }
-
-    // Admin'i bul
-    const admin = await Admin.findOne({ username });
-    if (!admin) {
-      return res.status(401).json({ error: 'İstifadəçi adı və ya şifrə yanlışdır.' });
-    }
-
-    // Şifreyi kontrol et
-    const validPassword = await bcrypt.compare(password, admin.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'İstifadəçi adı və ya şifrə yanlışdır.' });
-    }
-
-    // JWT token oluştur
-    const token = jwt.sign(
-      { 
-        id: admin._id, 
-        username: admin.username, 
-        role: admin.role 
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    console.log('Admin girişi başarılı:', username);
+    console.log('📋 Gelen veriler:', {
+      marka: ilanData.marka,
+      model: ilanData.model,
+      otherMarka: ilanData.otherMarka,
+      otherModel: ilanData.otherModel,
+      sekiller: ilanData.sekiller ? ilanData.sekiller.length : 0
+    });
     
-    res.json({
-      message: 'Giriş uğurludur.',
-      token,
-      admin: {
-        username: admin.username,
-        email: admin.email,
-        role: admin.role
+    // Zorunlu alanları kontrol et
+    const requiredFields = ['buraxilis', 'ban', 'muherrik', 'yanacaq', 'oturucu', 'suret', 'hecm', 'guc', 'reng', 'yurush', 'qiymet', 'ad', 'email', 'telefon'];
+    
+    // Marka kontrolü
+    if (!ilanData.marka) {
+      console.log('❌ Eksik alan: marka');
+      return res.status(400).json({ 
+        error: 'Eksik bilgi', 
+        detail: 'Marka alanı zorunludur' 
+      });
+    }
+    
+    // Model kontrolü - Diğər marka seçildiğinde otherModel kontrol et
+    if (ilanData.marka === 'Diğər') {
+      if (!ilanData.otherMarka || !ilanData.otherModel) {
+        console.log('❌ Diğər marka için eksik alan:', { otherMarka: ilanData.otherMarka, otherModel: ilanData.otherModel });
+        return res.status(400).json({ 
+          error: 'Eksik bilgi', 
+          detail: 'Diğər marka seçildiğinde marka ve model adını yazmalısınız' 
+        });
       }
-    });
-  } catch (err) {
-    console.error('Giriş hatası:', err);
-    res.status(500).json({ error: 'Giriş alınmadı.' });
-  }
-});
-
-// Token doğrula
-app.get('/api/admin/verify', authenticateToken, (req, res) => {
-  res.json({
-    valid: true,
-    admin: {
-      username: req.user.username,
-      role: req.user.role
-    }
-  });
-});
-
-// Reklam talebi gönder
-app.post('/api/reklam-talep', async (req, res) => {
-  try {
-    const { ad, email, telefon, sirket, reklamNovu, mesaj, budjce } = req.body;
-    
-    if (!ad || !email || !telefon || !reklamNovu || !mesaj) {
-      return res.status(400).json({ error: 'Bütün məcburi sahələr doldurulmalıdır.' });
-    }
-
-    const reklamTalep = new ReklamTalep({
-      ad,
-      email,
-      telefon,
-      sirket,
-      reklamNovu,
-      mesaj,
-      budjce
-    });
-
-    await reklamTalep.save();
-    console.log('Yeni reklam talebi:', ad, reklamNovu);
-    
-    res.status(201).json({ 
-      message: 'Reklam tələbiniz uğurla göndərildi. Tezliklə sizinlə əlaqə saxlanacaq.',
-      talep: reklamTalep 
-    });
-  } catch (err) {
-    console.error('Reklam talep hatası:', err);
-    res.status(500).json({ error: 'Reklam tələbi göndərilə bilmədi.' });
-  }
-});
-
-// Admin için reklam talepler listesi
-app.get('/api/admin/reklam-talepler', authenticateToken, async (req, res) => {
-  try {
-    const talepler = await ReklamTalep.find().sort({ createdAt: -1 });
-    console.log('Reklam talepler listesi:', talepler.length);
-    res.json(talepler);
-  } catch (err) {
-    console.error('Reklam talepler alma hatası:', err);
-    res.status(500).json({ error: 'Reklam tələpləri alınamadı.' });
-  }
-});
-
-// Reklam talep durumu güncelle
-app.put('/api/admin/reklam-talep/:id/durum', authenticateToken, async (req, res) => {
-  try {
-    const { durum, adminQeyd } = req.body;
-    
-    const talep = await ReklamTalep.findByIdAndUpdate(
-      req.params.id,
-      { durum, adminQeyd },
-      { new: true }
-    );
-    
-    if (!talep) {
-      return res.status(404).json({ error: 'Reklam tələbi tapılmadı.' });
-    }
-    
-    console.log('Reklam talep durumu güncellendi:', req.params.id, durum);
-    res.json({ message: 'Durum yeniləndi.', talep });
-  } catch (err) {
-    console.error('Durum güncelleme hatası:', err);
-    res.status(500).json({ error: 'Durum yenilənə bilmədi.' });
-  }
-});
-
-// Reklam talebi sil
-app.delete('/api/admin/reklam-talep/:id', authenticateToken, async (req, res) => {
-  try {
-    const talep = await ReklamTalep.findByIdAndDelete(req.params.id);
-    if (!talep) {
-      return res.status(404).json({ error: 'Reklam tələbi tapılmadı.' });
-    }
-    console.log('Reklam talebi silindi:', req.params.id);
-    res.json({ message: 'Reklam tələbi silindi.' });
-  } catch (err) {
-    console.error('Reklam talep silme hatası:', err);
-    res.status(500).json({ error: 'Reklam tələbi silinə bilmədi.' });
-  }
-});
-
-// İlan ekle
-app.post('/api/ilan', checkImageSize, async (req, res) => {
-  try {
-    // Görselleri optimize et
-    if (req.body.sekiller && Array.isArray(req.body.sekiller)) {
-      const optimizedSekiller = [];
-      for (let base64 of req.body.sekiller) {
-        // Sadece data:image/jpeg;base64,... veya data:image/png;base64,... ise
-        const matches = base64.match(/^data:(image\/jpeg|image\/png);base64,(.+)$/);
-        if (matches) {
-          const buffer = Buffer.from(matches[2], 'base64');
-          // Sharp ile yeniden boyutlandır ve kaliteyi düşür
-          const outputBuffer = await sharp(buffer)
-            .resize({ width: 1024 }) // Maksimum genişlik 1024px
-            .jpeg({ quality: 70 })   // Kalite %70
-            .toBuffer();
-          // Tekrar base64'e çevir
-          const optimizedBase64 = 'data:image/jpeg;base64,' + outputBuffer.toString('base64');
-          optimizedSekiller.push(optimizedBase64);
-        } else {
-          // Geçerli değilse olduğu gibi ekle
-          optimizedSekiller.push(base64);
-        }
+    } else {
+      // Normal marka seçildiğinde model kontrol et
+      if (!ilanData.model) {
+        console.log('❌ Eksik alan: model');
+        return res.status(400).json({ 
+          error: 'Eksik bilgi', 
+          detail: 'Model alanı zorunludur' 
+        });
       }
-      req.body.sekiller = optimizedSekiller;
     }
     
-    console.log('Gelen görsel sayısı:', req.body.sekiller?.length || 0);
-    
-    // Görsel boyutlarını logla
-    if (req.body.sekiller) {
-      const totalSize = req.body.sekiller.reduce((sum, img) => 
-        sum + Buffer.byteLength(img, 'base64'), 0
-      );
-      console.log('Toplam görsel boyutu:', (totalSize / (1024 * 1024)).toFixed(2), 'MB');
+    for (const field of requiredFields) {
+      if (!ilanData[field]) {
+        console.log(`❌ Eksik alan: ${field}`);
+        return res.status(400).json({ 
+          error: 'Eksik bilgi', 
+          detail: `${field} alanı zorunludur` 
+        });
+      }
     }
     
-    const ilan = new Ilan(req.body);
-    await ilan.save();
-    console.log('İlan başarıyla kaydedildi. ID:', ilan._id);
-    res.status(201).json({ 
-      message: 'İlan uğurla əlavə edildi.',
-      id: ilan._id 
+    // Görsel kontrolü
+    if (!ilanData.sekiller || ilanData.sekiller.length < 1 || ilanData.sekiller.length > 4) {
+      return res.status(400).json({ 
+        error: 'Görsel hatası', 
+        detail: 'Minimum 1, maksimum 4 görsel gereklidir' 
+      });
+    }
+    
+    // Görselleri sıkıştır
+    console.log('📸 Görseller sıkıştırılıyor...');
+    const compressedImages = [];
+    
+    for (let i = 0; i < ilanData.sekiller.length; i++) {
+      const originalImage = ilanData.sekiller[i];
+      const originalSizeKB = (originalImage.length * 0.75) / 1024;
+      
+      console.log(`📸 Görsel ${i + 1}: ${originalSizeKB.toFixed(1)}KB -> sıkıştırılıyor...`);
+      
+      try {
+        const compressedImage = await compressImageNode(originalImage, 300); // 300KB limit
+        const compressedSizeKB = (compressedImage.length * 0.75) / 1024;
+        
+        console.log(`✅ Görsel ${i + 1}: ${originalSizeKB.toFixed(1)}KB -> ${compressedSizeKB.toFixed(1)}KB`);
+        compressedImages.push(compressedImage);
+        
+      } catch (error) {
+        console.error(`❌ Görsel ${i + 1} sıkıştırma hatası:`, error);
+        compressedImages.push(originalImage); // Hata durumunda orijinal görseli kullan
+      }
+    }
+    
+    // Marka ve model bilgilerini düzenle
+    const finalMarka = ilanData.marka === 'Diğər' ? ilanData.otherMarka : ilanData.marka;
+    const finalModel = (ilanData.marka === 'Diğər' || ilanData.model === 'Diğər') ? ilanData.otherModel : ilanData.model;
+    
+    // Debug log'ları
+    console.log('🔍 Model kontrolü:', {
+      marka: ilanData.marka,
+      model: ilanData.model,
+      otherMarka: ilanData.otherMarka,
+      otherModel: ilanData.otherModel,
+      finalMarka,
+      finalModel
     });
-  } catch (err) {
-    console.error('İlan ekleme hatası:', err);
-    res.status(500).json({ error: 'İlan əlavə edilə bilmədi.', detail: err.message });
+    
+    // Model kontrolü - hem model hem otherModel alanlarını kontrol et
+    if (!finalModel || finalModel.trim() === '') {
+      console.log('❌ Model hatası: Model alanı boş');
+      return res.status(400).json({ 
+        error: 'Model hatası', 
+        detail: 'Model alanı zorunludur. Lütfen model seçin veya yazın.' 
+      });
+    }
+    
+    // Marka kontrolü
+    if (!finalMarka || finalMarka.trim() === '') {
+      console.log('❌ Marka hatası: Marka alanı boş');
+      return res.status(400).json({ 
+        error: 'Marka hatası', 
+        detail: 'Marka alanı zorunludur. Lütfen marka seçin veya yazın.' 
+      });
+    }
+    
+    const yeniIlan = new Ilan({
+      ...ilanData,
+      marka: finalMarka,
+      model: finalModel,
+      sekiller: compressedImages, // Sıkıştırılmış görseller
+      onaylandi: false
+    });
+    
+    await yeniIlan.save();
+    
+    console.log(`✅ Yeni ilan oluşturuldu: ${finalMarka} ${finalModel}`);
+    
+    res.status(201).json({ 
+      message: 'İlan başarıyla oluşturuldu ve onay için gönderildi',
+      ilanId: yeniIlan._id,
+      imageCount: compressedImages.length
+    });
+    
+  } catch (error) {
+    console.error('❌ İlan oluşturma hatası:', error);
+    res.status(500).json({ 
+      error: 'Sunucu hatası', 
+      detail: 'İlan oluşturulurken bir hata oluştu' 
+    });
   }
 });
 
-// Hızlı ilan sayısı kontrol (cache invalidation için)
-app.get('/api/ilan/count', async (req, res) => {
-  try {
-    const count = await Ilan.countDocuments({ onaylanmis: true });
-    res.json({ count });
-  } catch (err) {
-    console.error('Ilan sayısı alma hatası:', err);
-    res.status(500).json({ error: 'Sayı alınamadı.' });
-  }
-});
-
-// İlanları getir (sadece onaylanmış) - Pagination ile
+// Onaylanmış ilanları getir (public)
 app.get('/api/ilan', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    const ilanlar = await Ilan.find({ onaylandi: true })
+      .sort({ olusturmaTarihi: -1 })
+      .limit(50);
     
-    const ilanlar = await Ilan.find({ onaylanmis: true })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-      
-    const total = await Ilan.countDocuments({ onaylanmis: true });
-    const totalPages = Math.ceil(total / limit);
-    
-    console.log(`İlanlar getiriliyor - Sayfa: ${page}/${totalPages}, Limit: ${limit}`);
-    
-    res.json({
-      ilanlar,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalCount: total,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
-    });
-  } catch (err) {
-    console.error('İlanları alma hatası:', err);
-    res.status(500).json({ error: 'İlanlar alınamadı.' });
+    res.json(ilanlar);
+  } catch (error) {
+    console.error('İlan getirme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
-// Hafif ilan listesi (sadece ilk görsel) - Ana sayfa için
-app.get('/api/ilan/list', async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-    
-    // Ana sayfa için optimize edilmiş query
-    const ilanlar = await Ilan.find({ onaylanmis: true })
-      .select('marka model otherMarka otherModel qiymet qiymetTip buraxilis seher sekiller')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(); // Mongoose overhead'ini azalt
-    
-    // Sadece ilk görseli al
-    const optimizedIlanlar = ilanlar.map(ilan => ({
-      ...ilan,
-      sekiller: ilan.sekiller && ilan.sekiller.length > 0 ? [ilan.sekiller[0]] : []
-    }));
-      
-    const total = await Ilan.countDocuments({ onaylanmis: true });
-    const totalPages = Math.ceil(total / limit);
-    
-    console.log(`Hafif ilan listesi - Sayfa: ${page}/${totalPages}`);
-    
-    res.json({
-      ilanlar: optimizedIlanlar,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalCount: total,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
-    });
-  } catch (err) {
-    console.error('Hafif ilan listesi alma hatası:', err);
-    res.status(500).json({ error: 'İlan listesi alınamadı.' });
-  }
-});
-
-// Admin için tüm ilanları getir (korumalı) - Pagination ile
-app.get('/api/admin/ilanlar', authenticateToken, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50; // Admin için daha yüksek limit
-    const skip = (page - 1) * limit;
-    
-    const ilanlar = await Ilan.find()
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-      
-    const total = await Ilan.countDocuments();
-    const totalPages = Math.ceil(total / limit);
-    
-    console.log(`Admin ilanları - Sayfa: ${page}/${totalPages}, Toplam: ${total}`);
-    
-    res.json({
-      ilanlar,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalCount: total,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
-    });
-  } catch (err) {
-    console.error('İlanları alma hatası:', err);
-    res.status(500).json({ error: 'İlanlar alınamadı.' });
-  }
-});
-
-// Tek ilan getir
+// Belirli bir ilanı getir (public)
 app.get('/api/ilan/:id', async (req, res) => {
   try {
-    const ilan = await Ilan.findById(req.params.id);
+    const ilan = await Ilan.findOne({ _id: req.params.id, onaylandi: true });
+    
     if (!ilan) {
-      return res.status(404).json({ error: 'İlan tapılmadı.' });
+      return res.status(404).json({ error: 'İlan bulunamadı' });
     }
-    console.log('İlan detayı getiriliyor. ID:', req.params.id);
+    
     res.json(ilan);
-  } catch (err) {
-    console.error('İlan detayı alma hatası:', err);
-    res.status(500).json({ error: 'İlan detayı alınamadı.' });
+  } catch (error) {
+    console.error('İlan getirme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
-// İlanı onayla (korumalı)
-app.put('/api/admin/ilan/:id/onayla', authenticateToken, async (req, res) => {
+// Admin için optimize edilmiş ilan listesi (sadece gerekli alanlar ve ilk görsel)
+app.get('/api/admin/ilanlar', async (req, res) => {
   try {
+    console.log('📋 Admin ilanlar isteği alındı...');
+    const startTime = Date.now();
+    // Sadece gerekli alanlar ve ilk görsel
+    const ilanlar = await Ilan.find({}, {
+      marka: 1,
+      model: 1,
+      otherMarka: 1,
+      otherModel: 1,
+      qiymet: 1,
+      qiymetTip: 1,
+      onaylandi: 1,
+      olusturmaTarihi: 1,
+      sekiller: { $slice: 1 },
+      buraxilis: 1,
+      seher: 1,
+      ad: 1,
+      telefon: 1,
+      email: 1
+    })
+    .sort({ olusturmaTarihi: -1 })
+    .lean();
+    const endTime = Date.now();
+    console.log(`✅ Admin ilanlar gönderildi: ${ilanlar.length} adet (${endTime - startTime}ms)`);
+    res.json(ilanlar);
+  } catch (error) {
+    console.error('❌ Admin ilan getirme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin için ilan onayla/reddet
+app.put('/api/admin/ilan/:id', async (req, res) => {
+  try {
+    const { onaylandi, redSebebi, adminAdi } = req.body;
+    
+    if (typeof onaylandi !== 'boolean') {
+      return res.status(400).json({ error: 'Geçersiz onay durumu' });
+    }
+    
+    const updateData = {
+      onaylandi,
+      guncellemeTarihi: new Date()
+    };
+    
+    if (onaylandi) {
+      updateData.onayTarihi = new Date();
+      updateData.onaylayanAdmin = adminAdi;
+      updateData.redSebebi = null;
+    } else {
+      updateData.redSebebi = redSebebi || 'Belirtilmemiş';
+      updateData.onayTarihi = null;
+      updateData.onaylayanAdmin = null;
+    }
+    
     const ilan = await Ilan.findByIdAndUpdate(
-      req.params.id, 
-      { onaylanmis: true }, 
+      req.params.id,
+      updateData,
       { new: true }
     );
+    
     if (!ilan) {
-      return res.status(404).json({ error: 'İlan tapılmadı.' });
+      return res.status(404).json({ error: 'İlan bulunamadı' });
     }
-    console.log('İlan onaylandı. ID:', req.params.id, 'Admin:', req.user.username);
-    res.json({ message: 'İlan onaylandı.', ilan });
-  } catch (err) {
-    console.error('İlan onaylama hatası:', err);
-    res.status(500).json({ error: 'İlan onaylanamadı.' });
+    
+    res.json({ 
+      message: onaylandi ? 'İlan onaylandı' : 'İlan reddedildi',
+      ilan 
+    });
+    
+  } catch (error) {
+    console.error('İlan onaylama hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
-// İlan sil (korumalı)
-app.delete('/api/ilan/:id', authenticateToken, async (req, res) => {
+// Admin için ilan sil
+app.delete('/api/admin/ilan/:id', async (req, res) => {
   try {
     const ilan = await Ilan.findByIdAndDelete(req.params.id);
+    
     if (!ilan) {
-      return res.status(404).json({ error: 'İlan tapılmadı.' });
+      return res.status(404).json({ error: 'İlan bulunamadı' });
     }
-    console.log('İlan silindi. ID:', req.params.id, 'Admin:', req.user.username);
-    res.json({ message: 'İlan uğurla silindi.' });
-  } catch (err) {
-    console.error('İlan silmə xətası:', err);
-    res.status(500).json({ error: 'İlan silinə bilmədi.' });
+    
+    res.json({ 
+      message: 'İlan başarıyla silindi',
+      ilanId: req.params.id 
+    });
+    
+  } catch (error) {
+    console.error('İlan silme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
+// Admin için reklam taleplerini getir (şimdilik boş dizi)
+app.get('/api/admin/reklam-talepler', (req, res) => {
+  res.json([]);
+});
+
+// İstatistikler
+app.get('/api/admin/istatistikler', async (req, res) => {
+  try {
+    console.log('📊 İstatistik isteği alındı...');
+    const startTime = Date.now();
+    
+    const [toplamIlan, onaylanmisIlan, bekleyenIlan, reddedilmisIlan] = await Promise.all([
+      Ilan.countDocuments(),
+      Ilan.countDocuments({ onaylandi: true }),
+      Ilan.countDocuments({ onaylandi: false }),
+      Ilan.countDocuments({ onaylandi: false, redSebebi: { $exists: true, $ne: null } })
+    ]);
+    
+    const endTime = Date.now();
+    console.log(`✅ İstatistikler hesaplandı (${endTime - startTime}ms):`, {
+      toplamIlan,
+      onaylanmisIlan,
+      bekleyenIlan,
+      reddedilmisIlan
+    });
+    
+    res.json({
+      toplamIlan,
+      onaylanmisIlan,
+      bekleyenIlan,
+      reddedilmisIlan
+    });
+  } catch (error) {
+    console.error('❌ İstatistik hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// Sunucu başlat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Backend ${PORT} portunda çalışıyor!`);
 }); 
