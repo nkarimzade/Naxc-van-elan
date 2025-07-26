@@ -67,7 +67,7 @@ function Admin() {
       const startTime = Date.now();
       setLoading(true);
       
-      const response = await axios.get('http://localhost:5000/api/admin/ilanlar', {
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/ilanlar', {
         timeout: 60000 // 60 saniye timeout
       });
       
@@ -101,7 +101,7 @@ function Admin() {
       console.log('📊 İstatistikler yükleniyor...');
       const startTime = Date.now();
       
-      const response = await axios.get('http://localhost:5000/api/admin/istatistikler', {
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/istatistikler', {
         timeout: 5000 // 5 saniye timeout
       });
       
@@ -120,7 +120,7 @@ function Admin() {
       console.log('📢 Reklam talepleri yükleniyor...');
       const startTime = Date.now();
       
-      const response = await axios.get('http://localhost:5000/api/admin/reklam-talepler', {
+      const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talepler', {
         timeout: 5000 // 5 saniye timeout
       });
       
@@ -138,7 +138,7 @@ function Admin() {
     try {
       const adminAdi = adminUser?.username || 'Admin';
       
-      await axios.put(`http://localhost:5000/api/admin/ilan/${ilanId}`, {
+      await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`, {
         onaylandi,
         redSebebi,
         adminAdi
@@ -168,7 +168,7 @@ function Admin() {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/admin/ilan/${ilanId}`);
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`);
       
       // İlan listesinden kaldır
       setIlanlar(prevIlanlar => prevIlanlar.filter(ilan => ilan._id !== ilanId));
@@ -195,7 +195,7 @@ function Admin() {
     }
 
     try {
-      const response = await axios.delete('http://localhost:5000/api/admin/ilanlar/tumunu-sil');
+      const response = await axios.delete('https://naxc-van-elan-o2sr.onrender.com/api/admin/ilanlar/tumunu-sil');
       
       // İlan listesini temizle
       setIlanlar([]);
@@ -214,7 +214,7 @@ function Admin() {
   // Reklam talep durumu güncelle
   const updateReklamDurum = async (talepId, durum, adminQeyd = '') => {
     try {
-      await axios.put(`http://localhost:5000/api/admin/reklam-talep/${talepId}/durum`, {
+      await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}/durum`, {
         durum,
         adminQeyd
       });
@@ -240,7 +240,7 @@ function Admin() {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/admin/reklam-talep/${talepId}`);
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}`);
       
       // Talep listesinden kaldır
       setReklamTalepler(prevTalepler => prevTalepler.filter(talep => talep._id !== talepId));

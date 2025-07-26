@@ -95,7 +95,7 @@ function Ads() {
       console.log('Backend-ə sorğu göndərilir... Sayfa:', page);
         
       // Yeni backend endpoint'i kullan
-      const endpoint = 'http://localhost:5000/api/ilan';
+      const endpoint = 'https://naxc-van-elan-o2sr.onrender.com/api/ilan';
       console.log('API URL:', endpoint);
       
       const response = await axios.get(endpoint, { timeout: 60000 });
