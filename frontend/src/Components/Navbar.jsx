@@ -29,6 +29,7 @@ function Navbar() {
       <div className={`nav-menu ${isOpen ? 'active' : ''}`}>
         <Link to="/" className="nav-item" onClick={closeMenu}>Ana Səhifə</Link>
         <Link to="/elan-yarat" className="nav-item" onClick={closeMenu}>Elan Yarat</Link>
+        <Link to="/reklam" className="nav-item" onClick={closeMenu}>Saytda Reklam</Link>
       </div>
 
       {isOpen && <div className="overlay" onClick={closeMenu}></div>}

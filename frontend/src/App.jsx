@@ -23,7 +23,7 @@ function App() {
             <Route path="/ilan/:id" element={<IlanDetay />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/reklamlar" element={<Reklam />} />
+            <Route path="/reklam" element={<Reklam />} />
           </Routes>
         </main>
         <Footer />
