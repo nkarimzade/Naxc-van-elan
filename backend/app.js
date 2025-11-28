@@ -227,7 +227,8 @@ const reklamTalepSchema = new mongoose.Schema({
   guncellemeTarihi: { type: Date, default: Date.now }
 });
 
-const ReklamTalep = mongoose.model('ReklamTalep', reklamTalepSchema);
+// Collection adını açıkça belirt: 'reklamtalepler'
+const ReklamTalep = mongoose.model('ReklamTalep', reklamTalepSchema, 'reklamtalepler');
 
 // Admin şeması
 const adminSchema = new mongoose.Schema({
