@@ -67,7 +67,11 @@ function Admin() {
       const startTime = Date.now();
       setLoading(true);
       
+      const token = localStorage.getItem('adminToken');
       const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/ilanlar', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
         timeout: 60000 // 60 saniye timeout
       });
       
@@ -77,6 +81,12 @@ function Admin() {
       setIlanlar(response.data);
     } catch (error) {
       console.error('❌ İlanları alma hatası:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        navigate('/admin/login');
+        return;
+      }
       console.error('❌ Hata detayları:', {
         message: error.message,
         status: error.response?.status,
@@ -101,7 +111,11 @@ function Admin() {
       console.log('📊 İstatistikler yükleniyor...');
       const startTime = Date.now();
       
+      const token = localStorage.getItem('adminToken');
       const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/istatistikler', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
         timeout: 5000 // 5 saniye timeout
       });
       
@@ -111,6 +125,11 @@ function Admin() {
       setIstatistikler(response.data);
     } catch (error) {
       console.error('❌ İstatistik alma hatası:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        navigate('/admin/login');
+      }
     }
   };
 
@@ -120,7 +139,11 @@ function Admin() {
       console.log('📢 Reklam talepleri yükleniyor...');
       const startTime = Date.now();
       
+      const token = localStorage.getItem('adminToken');
       const response = await axios.get('https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talepler', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
         timeout: 5000 // 5 saniye timeout
       });
       
@@ -130,6 +153,11 @@ function Admin() {
       setReklamTalepler(response.data);
     } catch (error) {
       console.error('❌ Reklam talepler alma hatası:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        navigate('/admin/login');
+      }
     }
   };
 
@@ -137,11 +165,16 @@ function Admin() {
   const onaylaIlan = async (ilanId, onaylandi, redSebebi = '') => {
     try {
       const adminAdi = adminUser?.username || 'Admin';
+      const token = localStorage.getItem('adminToken');
       
       await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`, {
         onaylandi,
         redSebebi,
         adminAdi
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       
       // İlan listesini güncelle
@@ -168,7 +201,12 @@ function Admin() {
     }
 
     try {
-      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`);
+      const token = localStorage.getItem('adminToken');
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/ilan/${ilanId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       
       // İlan listesinden kaldır
       setIlanlar(prevIlanlar => prevIlanlar.filter(ilan => ilan._id !== ilanId));

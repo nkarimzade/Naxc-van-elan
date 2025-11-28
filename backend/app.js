@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 let sharp;
 try {
   sharp = require('sharp');
@@ -208,9 +210,6 @@ const ilanSchema = new mongoose.Schema({
 const Ilan = mongoose.model('Ilan', ilanSchema);
 
 // Admin şeması
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-
 const adminSchema = new mongoose.Schema({
   username: { 
     type: String, 
@@ -249,7 +248,7 @@ adminSchema.methods.comparePassword = async function(candidatePassword) {
 
 const Admin = mongoose.model('Admin', adminSchema);
 
-// JWT Secret (production'da .env'den alınmalı)
+// JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'naxauto-admin-secret-key-change-in-production';
 
 // Admin authentication middleware
@@ -476,48 +475,6 @@ app.get('/api/ilan/:id', async (req, res) => {
   }
 });
 
-// Admin oluşturma endpoint (Postman için)
-app.post('/api/admin/create', async (req, res) => {
-  try {
-    const { username, password, role } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
-    }
-    
-    // Kullanıcı adı kontrolü
-    const existingAdmin = await Admin.findOne({ username: username.toLowerCase().trim() });
-    if (existingAdmin) {
-      return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
-    }
-    
-    // Admin oluştur
-    const admin = new Admin({
-      username: username.toLowerCase().trim(),
-      password: password,
-      role: role === 'superadmin' ? 'superadmin' : 'admin'
-    });
-    
-    await admin.save();
-    
-    console.log(`✅ Admin oluşturuldu: ${admin.username}`);
-    
-    res.status(201).json({
-      message: 'Admin başarıyla oluşturuldu',
-      admin: {
-        id: admin._id,
-        username: admin.username,
-        role: admin.role,
-        olusturmaTarihi: admin.olusturmaTarihi
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Admin oluşturma hatası:', error);
-    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
-  }
-});
-
 // Admin login endpoint
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -566,6 +523,48 @@ app.post('/api/admin/login', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Admin login hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin oluşturma endpoint (Postman için)
+app.post('/api/admin/create', async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
+    }
+    
+    // Kullanıcı adı kontrolü
+    const existingAdmin = await Admin.findOne({ username: username.toLowerCase().trim() });
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
+    }
+    
+    // Admin oluştur
+    const admin = new Admin({
+      username: username.toLowerCase().trim(),
+      password: password,
+      role: role === 'superadmin' ? 'superadmin' : 'admin'
+    });
+    
+    await admin.save();
+    
+    console.log(`✅ Admin oluşturuldu: ${admin.username}`);
+    
+    res.status(201).json({
+      message: 'Admin başarıyla oluşturuldu',
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        olusturmaTarihi: admin.olusturmaTarihi
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin oluşturma hatası:', error);
     res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
   }
 });
