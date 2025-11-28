@@ -691,6 +691,7 @@ app.delete('/api/admin/ilan/:id', authenticateAdmin, async (req, res) => {
 // Reklam talep oluştur (public)
 app.post('/api/reklam-talep', async (req, res) => {
   try {
+    console.log('📝 Reklam talep isteği alındı...');
     const { ad, email, telefon, sirket, reklamNovu, mesaj, budjce } = req.body;
     
     if (!ad || !email || !telefon || !reklamNovu || !mesaj) {

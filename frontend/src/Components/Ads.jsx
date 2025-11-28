@@ -608,16 +608,7 @@ function Ads() {
           <span className="results-count">
             {filteredIlanlar.length} elan tapıldı
           </span>
-          <button 
-            className="refresh-cache-btn" 
-            onClick={() => {
-              setLoading(true);
-              fetchIlanlar(1, false);
-            }}
-            title="Yeni veri yükle"
-          >
-            🔄 Yenilə
-          </button>
+     
         </div>
       </div>
       )}

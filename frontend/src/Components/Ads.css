@@ -57,6 +57,8 @@
   max-width: 1200px;
   margin: 40px auto;
   padding: 0 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ads-container h2 {
@@ -237,6 +239,10 @@
   border: 1px solid #eef2f7;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   margin-bottom: 24px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .filters-section.filters-mobile {
@@ -250,6 +256,7 @@
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid #eee;
+  width: 100%;
 }
 
 .filters-header h3 {
@@ -313,6 +320,7 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   align-items: start;
+  justify-items: stretch;
 }
 
 .filter-group {
@@ -426,6 +434,10 @@
   padding-top: 16px;
   border-top: 1px solid #eee;
   text-align: center;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .results-count {
@@ -516,6 +528,22 @@
 
   .filters-section {
     padding: 16px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .filters-header {
+    width: 100%;
+  }
+  
+  .filters-grid {
+    width: 100%;
+  }
+  
+  .filter-results {
+    width: 100%;
   }
 
   .filters-header {
@@ -562,10 +590,15 @@
     border: 1px solid #e5e7eb;
     background: #ffffff;
     margin-bottom: 16px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .filters-header {
     gap: 8px;
+    width: 100%;
   }
 
   .filter-actions {
@@ -598,7 +631,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    text-align: left;
+    text-align: center;
+    width: 100%;
   }
 
   .results-count {
@@ -611,6 +645,8 @@
 @media (max-width: 480px) {
   .ads-container {
     padding: 0 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .ads-grid {
@@ -652,8 +688,23 @@
 
   .filters-section {
     padding: 12px;
-    margin: 0 -10px 20px -10px;
+    margin: 0 auto 20px auto;
     border-radius: 8px;
+    width: calc(100% - 16px);
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .filters-header {
+    width: 100%;
+  }
+  
+  .filters-grid {
+    width: 100%;
+  }
+  
+  .filter-results {
+    width: 100%;
   }
 
   .filters-grid {
@@ -675,6 +726,16 @@
 @media (max-width: 360px) {
   .ads-container {
     padding: 0 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .filters-section {
+    padding: 12px;
+    margin: 0 auto 20px auto;
+    width: calc(100% - 8px);
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .ads-grid {
