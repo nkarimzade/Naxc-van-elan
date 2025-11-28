@@ -2,7 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const sharp = require('sharp');
+let sharp;
+try {
+  sharp = require('sharp');
+} catch (error) {
+  console.warn('⚠️ Sharp modülü yüklenemedi, görsel optimizasyonu devre dışı:', error.message);
+}
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
@@ -32,16 +37,24 @@ const uploadImageToCloudinary = async (base64String, folder = 'ilanlar') => {
   try {
     // Base64'ten buffer'a çevir
     const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+    let buffer = Buffer.from(base64Data, 'base64');
     
-    // Önce Sharp ile optimize et (boyut ve kalite)
-    const optimizedBuffer = await sharp(buffer)
-      .resize(1200, 1200, {
-        fit: 'inside',
-        withoutEnlargement: true
-      })
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    // Sharp varsa optimize et, yoksa direkt buffer kullan
+    try {
+      if (sharp) {
+        const optimizedBuffer = await sharp(buffer)
+          .resize(1200, 1200, {
+            fit: 'inside',
+            withoutEnlargement: true
+          })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        buffer = optimizedBuffer;
+      }
+    } catch (sharpError) {
+      console.warn('⚠️ Sharp optimizasyonu atlandı, görsel direkt yüklenecek:', sharpError.message);
+      // Sharp yoksa veya hata varsa direkt buffer kullan
+    }
     
     // Cloudinary'ye yükle
     return new Promise((resolve, reject) => {
@@ -66,7 +79,7 @@ const uploadImageToCloudinary = async (base64String, folder = 'ilanlar') => {
         }
       );
       
-      uploadStream.end(optimizedBuffer);
+      uploadStream.end(buffer);
     });
   } catch (error) {
     console.error('❌ Görsel işleme hatası:', error);
@@ -87,15 +100,25 @@ let mongoConnectionUrl = MONGO_URL;
 
 // MongoDB connection string formatı: mongodb+srv://user:pass@host/database?options
 // Database adını her zaman naxauto olarak ayarla
-const urlMatch = mongoConnectionUrl.match(/^(mongodb\+srv:\/\/[^\/]+)(\/[^?]+)?(\?.*)?$/);
+const urlMatch = mongoConnectionUrl.match(/^(mongodb\+srv:\/\/[^\/]+)(\/[^?\/]+)?(\?.*)?$/);
 if (urlMatch) {
   const baseUrl = urlMatch[1]; // mongodb+srv://user:pass@host
   const queryString = urlMatch[3] || ''; // ?retryWrites=true&w=majority
+  // Eğer zaten database adı varsa değiştir, yoksa ekle
   mongoConnectionUrl = `${baseUrl}/naxauto${queryString}`;
 } else {
   // Eğer format uymazsa, basit ekleme yap
   if (mongoConnectionUrl.includes('?')) {
-    mongoConnectionUrl = mongoConnectionUrl.replace('?', '/naxauto?');
+    // URL'de ? varsa, önce /naxauto ekle
+    if (mongoConnectionUrl.match(/\/[^?\/]+\?/)) {
+      // Zaten database adı var, değiştir
+      mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^?\/]+(\?)/, '/naxauto$1');
+    } else {
+      mongoConnectionUrl = mongoConnectionUrl.replace('?', '/naxauto?');
+    }
+  } else if (mongoConnectionUrl.match(/\/[^\/]+$/)) {
+    // Sonunda zaten database adı var, değiştir
+    mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^\/]+$/, '/naxauto');
   } else if (!mongoConnectionUrl.endsWith('/')) {
     mongoConnectionUrl = mongoConnectionUrl + '/naxauto';
   } else {
@@ -326,9 +349,15 @@ app.post('/api/ilan', async (req, res) => {
     
   } catch (error) {
     console.error('❌ İlan oluşturma hatası:', error);
+    console.error('❌ Hata detayları:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ 
       error: 'Sunucu hatası', 
-      detail: 'İlan oluşturulurken bir hata oluştu' 
+      detail: error.message || 'İlan oluşturulurken bir hata oluştu',
+      errorType: error.name
     });
   }
 });
