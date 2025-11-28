@@ -99,32 +99,33 @@ if (!MONGO_URL) {
 let mongoConnectionUrl = MONGO_URL;
 
 // MongoDB connection string formatı: mongodb+srv://user:pass@host/database?options
-// Database adını her zaman naxauto olarak ayarla
-const urlMatch = mongoConnectionUrl.match(/^(mongodb\+srv:\/\/[^\/]+)(\/[^?\/]+)?(\?.*)?$/);
-if (urlMatch) {
-  const baseUrl = urlMatch[1]; // mongodb+srv://user:pass@host
-  const queryString = urlMatch[3] || ''; // ?retryWrites=true&w=majority
-  // Eğer zaten database adı varsa değiştir, yoksa ekle
-  mongoConnectionUrl = `${baseUrl}/naxauto${queryString}`;
+// Database adını her zaman naxauto olarak ayarla ve çift slash'ları önle
+
+// Önce çift slash'ları temizle (eğer varsa)
+mongoConnectionUrl = mongoConnectionUrl.replace(/\/\/+/g, '/');
+
+// URL'i parçalara ayır: mongodb+srv://user:pass@host/database?options
+const parts = mongoConnectionUrl.split('?');
+const basePart = parts[0]; // mongodb+srv://user:pass@host/database
+const queryPart = parts[1] ? '?' + parts[1] : ''; // ?retryWrites=true&w=majority
+
+// Host kısmını bul (son /'dan önceki kısım)
+const hostMatch = basePart.match(/^(mongodb\+srv:\/\/[^\/]+)/);
+if (hostMatch) {
+  const hostPart = hostMatch[1]; // mongodb+srv://user:pass@host
+  // Database adını naxauto olarak ayarla (tek slash ile)
+  mongoConnectionUrl = `${hostPart}/naxauto${queryPart}`;
 } else {
-  // Eğer format uymazsa, basit ekleme yap
+  // Fallback: basit ekleme
   if (mongoConnectionUrl.includes('?')) {
-    // URL'de ? varsa, önce /naxauto ekle
-    if (mongoConnectionUrl.match(/\/[^?\/]+\?/)) {
-      // Zaten database adı var, değiştir
-      mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^?\/]+(\?)/, '/naxauto$1');
-    } else {
-      mongoConnectionUrl = mongoConnectionUrl.replace('?', '/naxauto?');
-    }
-  } else if (mongoConnectionUrl.match(/\/[^\/]+$/)) {
-    // Sonunda zaten database adı var, değiştir
-    mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^\/]+$/, '/naxauto');
-  } else if (!mongoConnectionUrl.endsWith('/')) {
-    mongoConnectionUrl = mongoConnectionUrl + '/naxauto';
+    mongoConnectionUrl = mongoConnectionUrl.replace(/\/([^\/\?]*)\?/, '/naxauto?');
   } else {
-    mongoConnectionUrl = mongoConnectionUrl + 'naxauto';
+    mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^\/]*$/, '/naxauto');
   }
 }
+
+// Son kontrol: çift slash'ları temizle
+mongoConnectionUrl = mongoConnectionUrl.replace(/\/\/+/g, '/');
 
 console.log('🔗 MongoDB bağlantı string\'i:', mongoConnectionUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Şifreyi gizle
 
