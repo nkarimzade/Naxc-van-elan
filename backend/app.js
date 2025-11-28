@@ -74,46 +74,6 @@ const uploadImageToCloudinary = async (base64String, folder = 'ilanlar') => {
   }
 };
 
-// Node.js için görsel sıkıştırma (fallback - artık kullanılmayacak)
-const compressImageNode = async (base64String, maxSizeKB = 150) => {
-  try {
-    // Base64'ten buffer'a çevir
-    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    // Sharp ile sıkıştır
-    let quality = 60; // Başlangıç kalitesini düşürdük
-    let compressedBuffer;
-    
-    do {
-      compressedBuffer = await sharp(buffer)
-        .resize(800, 800, { // Boyutu daha da küçülttük
-          fit: 'inside', 
-          withoutEnlargement: true 
-        })
-        .jpeg({ quality })
-        .toBuffer();
-      
-      const sizeKB = compressedBuffer.length / 1024;
-      console.log(`📸 Görsel sıkıştırma: ${sizeKB.toFixed(1)}KB, Kalite: ${quality}%`);
-      
-      if (sizeKB <= maxSizeKB || quality <= 5) { // Minimum kaliteyi daha da düşürdük
-        break;
-      }
-      
-      quality -= 15; // Daha hızlı kalite düşürme
-    } while (quality > 5);
-    
-    // Buffer'ı base64'e çevir
-    const compressedBase64 = `data:image/jpeg;base64,${compressedBuffer.toString('base64')}`;
-    return compressedBase64;
-    
-  } catch (error) {
-    console.error('❌ Görsel sıkıştırma hatası:', error);
-    return base64String; // Hata durumunda orijinal görseli döndür
-  }
-};
-
 // MongoDB bağlantısı
 const MONGO_URL = process.env.MONGO_URL;
 
@@ -176,7 +136,7 @@ const ilanSchema = new mongoose.Schema({
   yurushTip: { type: String, default: 'km' },
   
   // Görseller ve özellikler
-  sekiller: [{ type: String, required: true }], // Cloudinary URL formatında
+  sekiller: [{ type: String, required: true }], // Cloudinary URL veya Base64 formatında
   techizat: [String],
   
   // Araç durumu
@@ -350,7 +310,7 @@ app.post('/api/ilan', async (req, res) => {
       ...ilanData,
       marka: finalMarka,
       model: finalModel,
-      sekiller: uploadedImageUrls, // Cloudinary URL'leri
+      sekiller: uploadedImageUrls, // Cloudinary URL'leri veya Base64
       onaylandi: false
     });
     
@@ -575,4 +535,4 @@ app.get('/api/admin/istatistikler', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend ${PORT} portunda çalışıyor!`);
-}); 
+});

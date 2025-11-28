@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 require('dotenv').config();
 const mongoose = require('mongoose');
 
@@ -29,11 +30,21 @@ if (urlMatch) {
     mongoConnectionUrl = mongoConnectionUrl + 'naxauto';
   }
 }
+=======
+const mongoose = require('mongoose');
+
+// MongoDB Atlas bağlantısı
+const MONGO_URL = 'mongodb+srv://naxauto:naxauto@cluster0.rfycebg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+>>>>>>> 09377d6c1cc75bfbc46a328a51da6ffc8a38c15b
 
 async function clearDatabase() {
   try {
     console.log('🗄️ Veritabanına bağlanılıyor...');
+<<<<<<< HEAD
     await mongoose.connect(mongoConnectionUrl);
+=======
+    await mongoose.connect(MONGO_URL);
+>>>>>>> 09377d6c1cc75bfbc46a328a51da6ffc8a38c15b
     console.log('✅ Veritabanına bağlandı!');
 
     // İlan şeması
