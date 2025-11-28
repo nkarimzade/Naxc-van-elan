@@ -628,7 +628,7 @@ function Ads() {
             </div>
           ))
         ) : filteredIlanlar.length === 0 ? (
-          <p className="no-results">Bu filtrlərə uyğun elan tapılmadı.</p>
+          <p   className="no-results">Bu filtrlərə uyğun elan tapılmadı.</p>
         ) : (
           filteredIlanlar.map(ilan => {
             const images = ilan.sekiller || [];
