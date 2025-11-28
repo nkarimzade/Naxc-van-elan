@@ -209,6 +209,26 @@ const ilanSchema = new mongoose.Schema({
 
 const Ilan = mongoose.model('Ilan', ilanSchema);
 
+// Reklam talep şeması
+const reklamTalepSchema = new mongoose.Schema({
+  ad: { type: String, required: true },
+  email: { type: String, required: true },
+  telefon: { type: String, required: true },
+  sirket: String,
+  reklamNovu: { type: String, required: true },
+  mesaj: { type: String, required: true },
+  budjce: String,
+  durum: { 
+    type: String, 
+    default: 'Yeni',
+    enum: ['Yeni', 'Cavablandırıldı', 'Ləğv edildi']
+  },
+  olusturmaTarihi: { type: Date, default: Date.now },
+  guncellemeTarihi: { type: Date, default: Date.now }
+});
+
+const ReklamTalep = mongoose.model('ReklamTalep', reklamTalepSchema);
+
 // Admin şeması
 const adminSchema = new mongoose.Schema({
   username: { 
@@ -667,9 +687,99 @@ app.delete('/api/admin/ilan/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Admin için reklam taleplerini getir (şimdilik boş dizi)
-app.get('/api/admin/reklam-talepler', authenticateAdmin, (req, res) => {
-  res.json([]);
+// Reklam talep oluştur (public)
+app.post('/api/reklam-talep', async (req, res) => {
+  try {
+    const { ad, email, telefon, sirket, reklamNovu, mesaj, budjce } = req.body;
+    
+    if (!ad || !email || !telefon || !reklamNovu || !mesaj) {
+      return res.status(400).json({ 
+        error: 'Eksik bilgi', 
+        detail: 'Ad, email, telefon, reklam növü və mesaj zorunludur' 
+      });
+    }
+    
+    const yeniTalep = new ReklamTalep({
+      ad,
+      email,
+      telefon,
+      sirket: sirket || '',
+      reklamNovu,
+      mesaj,
+      budjce: budjce || ''
+    });
+    
+    await yeniTalep.save();
+    
+    console.log(`✅ Yeni reklam talebi oluşturuldu: ${ad} - ${reklamNovu}`);
+    
+    res.status(201).json({ 
+      message: 'Reklam talebi başarıyla gönderildi',
+      talepId: yeniTalep._id
+    });
+    
+  } catch (error) {
+    console.error('❌ Reklam talep oluşturma hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin için reklam taleplerini getir
+app.get('/api/admin/reklam-talepler', authenticateAdmin, async (req, res) => {
+  try {
+    const talepler = await ReklamTalep.find()
+      .sort({ olusturmaTarihi: -1 })
+      .lean();
+    
+    res.json(talepler);
+  } catch (error) {
+    console.error('❌ Reklam talepleri getirme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin için reklam talep durumunu güncelle
+app.put('/api/admin/reklam-talep/:id/durum', authenticateAdmin, async (req, res) => {
+  try {
+    const { durum } = req.body;
+    
+    if (!durum || !['Yeni', 'Cavablandırıldı', 'Ləğv edildi'].includes(durum)) {
+      return res.status(400).json({ error: 'Geçersiz durum' });
+    }
+    
+    const talep = await ReklamTalep.findByIdAndUpdate(
+      req.params.id,
+      { durum, guncellemeTarihi: new Date() },
+      { new: true }
+    );
+    
+    if (!talep) {
+      return res.status(404).json({ error: 'Talep bulunamadı' });
+    }
+    
+    res.json({ message: 'Talep durumu güncellendi', talep });
+    
+  } catch (error) {
+    console.error('❌ Reklam talep durum güncelleme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin için reklam talep sil
+app.delete('/api/admin/reklam-talep/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const talep = await ReklamTalep.findByIdAndDelete(req.params.id);
+    
+    if (!talep) {
+      return res.status(404).json({ error: 'Talep bulunamadı' });
+    }
+    
+    res.json({ message: 'Talep başarıyla silindi', talepId: req.params.id });
+    
+  } catch (error) {
+    console.error('❌ Reklam talep silme hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
 });
 
 // Cloudinary kontrol endpoint'i - Son ilanın görsellerini kontrol et

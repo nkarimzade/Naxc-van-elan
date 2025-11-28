@@ -252,9 +252,14 @@ function Admin() {
   // Reklam talep durumu güncelle
   const updateReklamDurum = async (talepId, durum, adminQeyd = '') => {
     try {
+      const token = localStorage.getItem('adminToken');
       await axios.put(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}/durum`, {
         durum,
         adminQeyd
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       
       // Talep listesini güncelle
@@ -278,7 +283,12 @@ function Admin() {
     }
 
     try {
-      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}`);
+      const token = localStorage.getItem('adminToken');
+      await axios.delete(`https://naxc-van-elan-o2sr.onrender.com/api/admin/reklam-talep/${talepId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       
       // Talep listesinden kaldır
       setReklamTalepler(prevTalepler => prevTalepler.filter(talep => talep._id !== talepId));
