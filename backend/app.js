@@ -207,6 +207,75 @@ const ilanSchema = new mongoose.Schema({
 
 const Ilan = mongoose.model('Ilan', ilanSchema);
 
+// Admin şeması
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const adminSchema = new mongoose.Schema({
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  password: { 
+    type: String, 
+    required: true 
+  },
+  role: { 
+    type: String, 
+    default: 'admin',
+    enum: ['admin', 'superadmin']
+  },
+  olusturmaTarihi: { 
+    type: Date, 
+    default: Date.now 
+  },
+  sonGirisTarihi: Date
+});
+
+// Şifreyi hash'le
+adminSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Şifre kontrolü metodu
+adminSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+const Admin = mongoose.model('Admin', adminSchema);
+
+// JWT Secret (production'da .env'den alınmalı)
+const JWT_SECRET = process.env.JWT_SECRET || 'naxauto-admin-secret-key-change-in-production';
+
+// Admin authentication middleware
+const authenticateAdmin = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Yetkilendirme gerekli', detail: 'Token bulunamadı' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const admin = await Admin.findById(decoded.adminId);
+    
+    if (!admin) {
+      return res.status(401).json({ error: 'Geçersiz token', detail: 'Admin bulunamadı' });
+    }
+    
+    req.admin = admin;
+    next();
+  } catch (error) {
+    console.error('❌ Admin authentication hatası:', error);
+    res.status(401).json({ error: 'Geçersiz token', detail: error.message });
+  }
+};
+
 // Yeni ilan oluştur
 app.post('/api/ilan', async (req, res) => {
   try {
@@ -407,8 +476,102 @@ app.get('/api/ilan/:id', async (req, res) => {
   }
 });
 
+// Admin oluşturma endpoint (Postman için)
+app.post('/api/admin/create', async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
+    }
+    
+    // Kullanıcı adı kontrolü
+    const existingAdmin = await Admin.findOne({ username: username.toLowerCase().trim() });
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor' });
+    }
+    
+    // Admin oluştur
+    const admin = new Admin({
+      username: username.toLowerCase().trim(),
+      password: password,
+      role: role === 'superadmin' ? 'superadmin' : 'admin'
+    });
+    
+    await admin.save();
+    
+    console.log(`✅ Admin oluşturuldu: ${admin.username}`);
+    
+    res.status(201).json({
+      message: 'Admin başarıyla oluşturuldu',
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        olusturmaTarihi: admin.olusturmaTarihi
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin oluşturma hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
+// Admin login endpoint
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
+    }
+    
+    // Admin'i bul
+    const admin = await Admin.findOne({ username: username.toLowerCase().trim() });
+    
+    if (!admin) {
+      return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre' });
+    }
+    
+    // Şifreyi kontrol et
+    const isPasswordValid = await admin.comparePassword(password);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre' });
+    }
+    
+    // Son giriş tarihini güncelle
+    admin.sonGirisTarihi = new Date();
+    await admin.save();
+    
+    // JWT token oluştur
+    const token = jwt.sign(
+      { adminId: admin._id, username: admin.username, role: admin.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    console.log(`✅ Admin girişi başarılı: ${admin.username}`);
+    
+    res.json({
+      token,
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        sonGirisTarihi: admin.sonGirisTarihi
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Admin login hatası:', error);
+    res.status(500).json({ error: 'Sunucu hatası', detail: error.message });
+  }
+});
+
 // Admin için optimize edilmiş ilan listesi (sadece gerekli alanlar ve ilk görsel)
-app.get('/api/admin/ilanlar', async (req, res) => {
+app.get('/api/admin/ilanlar', authenticateAdmin, async (req, res) => {
   try {
     console.log('📋 Admin ilanlar isteği alındı...');
     const startTime = Date.now();
@@ -441,7 +604,7 @@ app.get('/api/admin/ilanlar', async (req, res) => {
 });
 
 // Admin için ilan onayla/reddet
-app.put('/api/admin/ilan/:id', async (req, res) => {
+app.put('/api/admin/ilan/:id', authenticateAdmin, async (req, res) => {
   try {
     const { onaylandi, redSebebi, adminAdi } = req.body;
     
@@ -486,7 +649,7 @@ app.put('/api/admin/ilan/:id', async (req, res) => {
 });
 
 // Admin için ilan sil
-app.delete('/api/admin/ilan/:id', async (req, res) => {
+app.delete('/api/admin/ilan/:id', authenticateAdmin, async (req, res) => {
   try {
     const ilan = await Ilan.findByIdAndDelete(req.params.id);
     
@@ -506,7 +669,7 @@ app.delete('/api/admin/ilan/:id', async (req, res) => {
 });
 
 // Admin için reklam taleplerini getir (şimdilik boş dizi)
-app.get('/api/admin/reklam-talepler', (req, res) => {
+app.get('/api/admin/reklam-talepler', authenticateAdmin, (req, res) => {
   res.json([]);
 });
 
@@ -543,7 +706,7 @@ app.get('/api/test/cloudinary-check', async (req, res) => {
 });
 
 // İstatistikler
-app.get('/api/admin/istatistikler', async (req, res) => {
+app.get('/api/admin/istatistikler', authenticateAdmin, async (req, res) => {
   try {
     console.log('📊 İstatistik isteği alındı...');
     const startTime = Date.now();
