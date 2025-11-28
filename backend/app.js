@@ -95,11 +95,11 @@ if (!MONGO_URL) {
   process.exit(1);
 }
 
-// Database adını zorunlu olarak naxauto yap
+// Database adını test olarak ayarla (MongoDB Atlas'ta mevcut database)
 let mongoConnectionUrl = MONGO_URL.trim();
 
 // MongoDB connection string formatı: mongodb+srv://user:pass@host/database?options
-// Database adını her zaman naxauto olarak ayarla
+// Database adını her zaman test olarak ayarla
 
 // Regex ile URL'i parse et
 // Format: mongodb+srv://user:pass@host/database?options
@@ -109,8 +109,8 @@ const urlMatch = mongoConnectionUrl.match(mongoUrlRegex);
 if (urlMatch) {
   const protocolAndHost = urlMatch[1]; // mongodb+srv://user:pass@host
   const queryString = urlMatch[3] || ''; // ?retryWrites=true&w=majority
-  // Database adını naxauto olarak ayarla (tek slash ile)
-  mongoConnectionUrl = `${protocolAndHost}/naxauto${queryString}`;
+  // Database adını test olarak ayarla (tek slash ile)
+  mongoConnectionUrl = `${protocolAndHost}/test${queryString}`;
 } else {
   // Regex eşleşmezse, manuel düzeltme
   // Önce çift slash'ları temizle (mongodb+srv:// kısmını koruyarak)
@@ -124,13 +124,13 @@ if (urlMatch) {
   // Host kısmını bul
   const hostMatch = basePart.match(/^(mongodb\+srv:\/\/[^\/]+)/);
   if (hostMatch) {
-    mongoConnectionUrl = `${hostMatch[1]}/naxauto${queryPart}`;
+    mongoConnectionUrl = `${hostMatch[1]}/test${queryPart}`;
   } else {
     // Son çare: basit ekleme
     if (basePart.endsWith('/')) {
-      mongoConnectionUrl = `${basePart}naxauto${queryPart}`;
+      mongoConnectionUrl = `${basePart}test${queryPart}`;
     } else {
-      mongoConnectionUrl = `${basePart}/naxauto${queryPart}`;
+      mongoConnectionUrl = `${basePart}/test${queryPart}`;
     }
   }
 }

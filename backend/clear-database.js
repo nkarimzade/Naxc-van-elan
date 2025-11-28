@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 require('dotenv').config();
 const mongoose = require('mongoose');
 
@@ -10,42 +9,38 @@ if (!MONGO_URL) {
   process.exit(1);
 }
 
-// Database adını zorunlu olarak naxauto yap
-let mongoConnectionUrl = MONGO_URL;
+// Database adını test olarak ayarla (MongoDB Atlas'ta mevcut database)
+let mongoConnectionUrl = MONGO_URL.trim();
 
 // MongoDB connection string formatı: mongodb+srv://user:pass@host/database?options
-// Database adını her zaman naxauto olarak ayarla
-const urlMatch = mongoConnectionUrl.match(/^(mongodb\+srv:\/\/[^\/]+)(\/[^?]+)?(\?.*)?$/);
+// Database adını her zaman test olarak ayarla
+const mongoUrlRegex = /^(mongodb\+srv:\/\/[^\/]+)(\/[^?]*)?(\?.*)?$/;
+const urlMatch = mongoConnectionUrl.match(mongoUrlRegex);
+
 if (urlMatch) {
   const baseUrl = urlMatch[1]; // mongodb+srv://user:pass@host
   const queryString = urlMatch[3] || ''; // ?retryWrites=true&w=majority
-  mongoConnectionUrl = `${baseUrl}/naxauto${queryString}`;
+  mongoConnectionUrl = `${baseUrl}/test${queryString}`;
 } else {
   // Eğer format uymazsa, basit ekleme yap
   if (mongoConnectionUrl.includes('?')) {
-    mongoConnectionUrl = mongoConnectionUrl.replace('?', '/naxauto?');
+    mongoConnectionUrl = mongoConnectionUrl.replace('?', '/test?');
   } else if (!mongoConnectionUrl.endsWith('/')) {
-    mongoConnectionUrl = mongoConnectionUrl + '/naxauto';
+    mongoConnectionUrl = mongoConnectionUrl + '/test';
   } else {
-    mongoConnectionUrl = mongoConnectionUrl + 'naxauto';
+    mongoConnectionUrl = mongoConnectionUrl + 'test';
   }
 }
-=======
-const mongoose = require('mongoose');
 
-// MongoDB Atlas bağlantısı
-const MONGO_URL = 'mongodb+srv://naxauto:naxauto@cluster0.rfycebg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
->>>>>>> 09377d6c1cc75bfbc46a328a51da6ffc8a38c15b
+// Final kontrol: çift slash'ları temizle
+mongoConnectionUrl = mongoConnectionUrl.replace(/(mongodb\+srv:\/\/[^\/]+)\/\/+/g, '$1/');
 
 async function clearDatabase() {
   try {
     console.log('🗄️ Veritabanına bağlanılıyor...');
-<<<<<<< HEAD
     await mongoose.connect(mongoConnectionUrl);
-=======
-    await mongoose.connect(MONGO_URL);
->>>>>>> 09377d6c1cc75bfbc46a328a51da6ffc8a38c15b
     console.log('✅ Veritabanına bağlandı!');
+    console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
 
     // İlan şeması
     const ilanSchema = new mongoose.Schema({}, { strict: false });
@@ -77,4 +72,4 @@ async function clearDatabase() {
   }
 }
 
-clearDatabase(); 
+clearDatabase();
