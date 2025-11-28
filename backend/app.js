@@ -96,38 +96,52 @@ if (!MONGO_URL) {
 }
 
 // Database adını zorunlu olarak naxauto yap
-let mongoConnectionUrl = MONGO_URL;
+let mongoConnectionUrl = MONGO_URL.trim();
 
 // MongoDB connection string formatı: mongodb+srv://user:pass@host/database?options
-// Database adını her zaman naxauto olarak ayarla ve çift slash'ları önle
+// Database adını her zaman naxauto olarak ayarla
 
-// Önce çift slash'ları temizle (eğer varsa)
-mongoConnectionUrl = mongoConnectionUrl.replace(/\/\/+/g, '/');
+// Regex ile URL'i parse et
+// Format: mongodb+srv://user:pass@host/database?options
+const mongoUrlRegex = /^(mongodb\+srv:\/\/[^\/]+)(\/[^?]*)?(\?.*)?$/;
+const urlMatch = mongoConnectionUrl.match(mongoUrlRegex);
 
-// URL'i parçalara ayır: mongodb+srv://user:pass@host/database?options
-const parts = mongoConnectionUrl.split('?');
-const basePart = parts[0]; // mongodb+srv://user:pass@host/database
-const queryPart = parts[1] ? '?' + parts[1] : ''; // ?retryWrites=true&w=majority
-
-// Host kısmını bul (son /'dan önceki kısım)
-const hostMatch = basePart.match(/^(mongodb\+srv:\/\/[^\/]+)/);
-if (hostMatch) {
-  const hostPart = hostMatch[1]; // mongodb+srv://user:pass@host
+if (urlMatch) {
+  const protocolAndHost = urlMatch[1]; // mongodb+srv://user:pass@host
+  const queryString = urlMatch[3] || ''; // ?retryWrites=true&w=majority
   // Database adını naxauto olarak ayarla (tek slash ile)
-  mongoConnectionUrl = `${hostPart}/naxauto${queryPart}`;
+  mongoConnectionUrl = `${protocolAndHost}/naxauto${queryString}`;
 } else {
-  // Fallback: basit ekleme
-  if (mongoConnectionUrl.includes('?')) {
-    mongoConnectionUrl = mongoConnectionUrl.replace(/\/([^\/\?]*)\?/, '/naxauto?');
+  // Regex eşleşmezse, manuel düzeltme
+  // Önce çift slash'ları temizle (mongodb+srv:// kısmını koruyarak)
+  mongoConnectionUrl = mongoConnectionUrl.replace(/([^:])\/\/+/g, '$1/');
+  
+  // Query string'i ayır
+  const queryIndex = mongoConnectionUrl.indexOf('?');
+  const queryPart = queryIndex !== -1 ? mongoConnectionUrl.substring(queryIndex) : '';
+  const basePart = queryIndex !== -1 ? mongoConnectionUrl.substring(0, queryIndex) : mongoConnectionUrl;
+  
+  // Host kısmını bul
+  const hostMatch = basePart.match(/^(mongodb\+srv:\/\/[^\/]+)/);
+  if (hostMatch) {
+    mongoConnectionUrl = `${hostMatch[1]}/naxauto${queryPart}`;
   } else {
-    mongoConnectionUrl = mongoConnectionUrl.replace(/\/[^\/]*$/, '/naxauto');
+    // Son çare: basit ekleme
+    if (basePart.endsWith('/')) {
+      mongoConnectionUrl = `${basePart}naxauto${queryPart}`;
+    } else {
+      mongoConnectionUrl = `${basePart}/naxauto${queryPart}`;
+    }
   }
 }
 
-// Son kontrol: çift slash'ları temizle
-mongoConnectionUrl = mongoConnectionUrl.replace(/\/\/+/g, '/');
+// Final kontrol: mongodb+srv:// dışındaki çift slash'ları temizle
+mongoConnectionUrl = mongoConnectionUrl.replace(/(mongodb\+srv:\/\/[^\/]+)\/\/+/g, '$1/');
 
-console.log('🔗 MongoDB bağlantı string\'i:', mongoConnectionUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Şifreyi gizle
+// Debug: URL formatını kontrol et
+const debugUrl = mongoConnectionUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
+console.log('🔗 MongoDB bağlantı string\'i:', debugUrl);
+console.log('🔍 Database adı kontrolü:', mongoConnectionUrl.match(/\/([^\/\?]+)(\?|$)/)?.[1] || 'bulunamadı');
 
 mongoose.connect(mongoConnectionUrl)
   .then(() => {
