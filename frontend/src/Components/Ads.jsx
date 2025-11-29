@@ -61,8 +61,6 @@ function Ads() {
   // Marka seçimine göre modelleri filtrele
   const [availableModels, setAvailableModels] = useState([]);
 
-
-
   // İlanları getir fonksiyonu
   const fetchIlanlar = async (page = 1, isLoadMore = false) => {
       try {
@@ -81,7 +79,6 @@ function Ads() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
         
-        console.log('Backend yanıtı:', response.data);
       const newIlanlar = Array.isArray(response.data) ? response.data : [];
         
       if (!isLoadMore) {
@@ -107,7 +104,6 @@ function Ads() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
         
-              console.log('Elanlar yüklendi:', newIlanlar.length, 'adet.');
         setLoading(false);
       setLoadingMore(false);
         
@@ -356,7 +352,6 @@ function Ads() {
           {filtersCollapsed ? 'Filtrləri göstər' : 'Filtrləri gizlət'}
         </button>
       )}
-
       {(!isMobileFilters || !filtersCollapsed) && (
       <div className={`filters-section ${isMobileFilters ? 'filters-mobile' : ''}`}>
         <div className="filters-header">

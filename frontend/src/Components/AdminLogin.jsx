@@ -32,7 +32,6 @@ function AdminLogin() {
       localStorage.setItem('adminToken', token);
       localStorage.setItem('adminUser', JSON.stringify(admin));
       
-      console.log('Admin girişi başarılı:', admin.username);
       navigate('/admin');
       
     } catch (error) {

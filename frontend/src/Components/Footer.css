@@ -59,13 +59,9 @@
 .footer-logo-img {
   height: 35px;
   width: auto;
-  transition: transform 0.3s ease;
   border-radius: 50%;
 }
 
-.footer-logo:hover .footer-logo-img {
-  transform: scale(1.05);
-}
 
 .footer-description {
   color: #6b7280;
@@ -170,7 +166,6 @@
 }
 
 .krisoft-brand:hover {
-  transform: scale(1.05);
   background: #374151;
 }
 

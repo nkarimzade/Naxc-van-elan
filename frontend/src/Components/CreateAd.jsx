@@ -106,7 +106,6 @@ function CreateAd() {
   // Marka değişince model ve otherModel sıfırlansın
   const handleMarkaChange = e => {
     const selectedMarka = e.target.value;
-    console.log('🔧 Marka seçildi:', selectedMarka);
     
     if (selectedMarka === 'Diğər') {
       // Diğər marka seçildiğinde model'i de "Diğər" yap
@@ -117,7 +116,6 @@ function CreateAd() {
         otherMarka: '', 
         otherModel: '' 
       });
-      console.log('🔧 Diğər marka seçildi, model "Diğər" yapıldı');
     } else {
       setForm({ 
         ...form, 
@@ -182,10 +180,6 @@ function CreateAd() {
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     
-    console.log('📸 Görsel seçimi:', {
-      dosyaSayisi: files.length,
-      dosyalar: files.map(f => ({ name: f.name, size: f.size, type: f.type }))
-    });
     
     if (files.length < 1) {
       alert("Ən azı 1 şəkil seçməlisiniz!");
@@ -193,14 +187,9 @@ function CreateAd() {
     }
     
     try {
-      console.log('📸 Görseller yükleniyor...');
       // Her görseli yeniden boyutlandır ve kaliteyi düşür
       const base64Files = await Promise.all(files.map(file => resizeImage(file, 1024, 0.7)));
       
-      console.log('✅ Görseller başarıyla yüklendi:', {
-        yuklenenSayi: base64Files.length,
-        dosyaAdlari: files.map(f => f.name)
-      });
       
       setForm({...form, sekiller: base64Files});
     } catch (err) {
@@ -213,10 +202,6 @@ function CreateAd() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('📋 Form gönderimi başladı:', {
-      sekillerSayisi: form.sekiller ? form.sekiller.length : 0,
-      sekiller: form.sekiller ? 'Mevcut' : 'Yok'
-    });
     
     if (!form.sekiller || form.sekiller.length < 1) {
       alert("Ən azı 1 şəkil əlavə etməlisiniz!");
@@ -225,18 +210,6 @@ function CreateAd() {
     
     setIsSubmitting(true);
     setSubmitSuccess(false);
-
-    // Debug: Form verilerini kontrol et
-    console.log('📋 Form verileri:', {
-      marka: form.marka,
-      model: form.model,
-      otherMarka: form.otherMarka,
-      otherModel: form.otherModel,
-      isOtherMarka,
-      isOtherModel,
-      finalMarka: form.marka === 'Diğər' ? form.otherMarka : form.marka,
-      finalModel: (form.marka === 'Diğər' || form.model === 'Diğər') ? form.otherModel : form.model
-    });
 
     // Sayısal alanları number'a çevir
     const ilanData = {
@@ -340,7 +313,6 @@ function CreateAd() {
             value={form.otherModel}
             onChange={e => {
               const otherModelValue = e.target.value;
-              console.log('🔧 Other model yazıldı:', otherModelValue);
               setForm({...form, otherModel: otherModelValue});
             }}
             required
@@ -350,7 +322,6 @@ function CreateAd() {
             value={form.model}
             onChange={e => {
               const selectedModel = e.target.value;
-              console.log('🔧 Model seçildi:', selectedModel);
               setForm({...form, model: selectedModel, otherModel: ''});
             }}
             required
@@ -370,7 +341,6 @@ function CreateAd() {
             value={form.otherModel}
             onChange={e => {
               const otherModelValue = e.target.value;
-              console.log('🔧 Other model yazıldı:', otherModelValue);
               setForm({...form, otherModel: otherModelValue});
             }}
             required

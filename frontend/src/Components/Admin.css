@@ -224,9 +224,6 @@
   transition: transform 0.3s ease;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-}
 
 .stat-card h3 {
   font-size: 0.9rem;
@@ -260,7 +257,6 @@
 
 .refresh-btn:hover {
   background: linear-gradient(135deg, #065f46, #047857);
-  transform: translateY(-2px);
 }
 
 .delete-all-btn {
@@ -278,7 +274,6 @@
 
 .delete-all-btn:hover {
   background: linear-gradient(135deg, #b91c1c, #991b1b);
-  transform: translateY(-2px);
 }
 
 /* Error Message */
@@ -327,7 +322,6 @@
 }
 
 .ilan-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 
@@ -374,7 +368,8 @@
 .ilan-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #f3f4f6;
 }
 
 .no-image {
@@ -533,7 +528,6 @@
 }
 
 .reklam-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 

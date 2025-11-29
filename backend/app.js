@@ -25,8 +25,6 @@ if (process.env.CLOUDINARY_URL) {
       api_key: urlMatch[1],
       api_secret: urlMatch[2]
     });
-    console.log('✅ Cloudinary konfigürasyonu başarılı!');
-    console.log(`   Cloud Name: ${urlMatch[3]}`);
   } else {
     console.error('❌ CLOUDINARY_URL formatı hatalı!');
   }
@@ -75,7 +73,6 @@ const uploadImageToCloudinary = async (base64String, folder = 'ilanlar') => {
             console.error('❌ Cloudinary yükleme hatası:', error);
             reject(error);
           } else {
-            console.log(`✅ Cloudinary'ye yüklendi: ${result.secure_url}`);
             resolve(result.secure_url);
           }
         }
@@ -142,13 +139,9 @@ mongoConnectionUrl = mongoConnectionUrl.replace(/(mongodb\+srv:\/\/[^\/]+)\/\/+/
 
 // Debug: URL formatını kontrol et
 const debugUrl = mongoConnectionUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
-console.log('🔗 MongoDB bağlantı string\'i:', debugUrl);
-console.log('🔍 Database adı kontrolü:', mongoConnectionUrl.match(/\/([^\/\?]+)(\?|$)/)?.[1] || 'bulunamadı');
 
 mongoose.connect(mongoConnectionUrl)
   .then(() => {
-    console.log('✅ MongoDB bağlantısı başarılı!');
-    console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
   })
   .catch((err) => {
     console.error('❌ MongoDB bağlantı hatası:', err);
@@ -298,14 +291,8 @@ const authenticateAdmin = async (req, res, next) => {
 // Yeni ilan oluştur
 app.post('/api/ilan', async (req, res) => {
   try {
-    console.log('📝 Yeni ilan isteği alındı...');
     const ilanData = req.body;
     
-    console.log('📋 Gelen veriler:', {
-      marka: ilanData.marka,
-      model: ilanData.model,
-      otherMarka: ilanData.otherMarka,
-      otherModel: ilanData.otherModel,
       sekiller: ilanData.sekiller ? ilanData.sekiller.length : 0
     });
     
@@ -314,7 +301,6 @@ app.post('/api/ilan', async (req, res) => {
     
     // Marka kontrolü
     if (!ilanData.marka) {
-      console.log('❌ Eksik alan: marka');
       return res.status(400).json({ 
         error: 'Eksik bilgi', 
         detail: 'Marka alanı zorunludur' 
@@ -324,7 +310,6 @@ app.post('/api/ilan', async (req, res) => {
     // Model kontrolü - Diğər marka seçildiğinde otherModel kontrol et
     if (ilanData.marka === 'Diğər') {
       if (!ilanData.otherMarka || !ilanData.otherModel) {
-        console.log('❌ Diğər marka için eksik alan:', { otherMarka: ilanData.otherMarka, otherModel: ilanData.otherModel });
         return res.status(400).json({ 
           error: 'Eksik bilgi', 
           detail: 'Diğər marka seçildiğinde marka ve model adını yazmalısınız' 
@@ -333,7 +318,6 @@ app.post('/api/ilan', async (req, res) => {
     } else {
       // Normal marka seçildiğinde model kontrol et
       if (!ilanData.model) {
-        console.log('❌ Eksik alan: model');
         return res.status(400).json({ 
           error: 'Eksik bilgi', 
           detail: 'Model alanı zorunludur' 
@@ -343,7 +327,6 @@ app.post('/api/ilan', async (req, res) => {
     
     for (const field of requiredFields) {
       if (!ilanData[field]) {
-        console.log(`❌ Eksik alan: ${field}`);
         return res.status(400).json({ 
           error: 'Eksik bilgi', 
           detail: `${field} alanı zorunludur` 
@@ -360,7 +343,6 @@ app.post('/api/ilan', async (req, res) => {
     }
     
     // Görselleri Cloudinary'ye yükle veya base64 olarak kaydet
-    console.log('📸 Görseller işleniyor...');
     const uploadedImageUrls = [];
     const cloudinaryConfigured = !!process.env.CLOUDINARY_URL;
     
@@ -373,21 +355,17 @@ app.post('/api/ilan', async (req, res) => {
       const originalSizeKB = (base64Image.length * 0.75) / 1024;
       
       if (cloudinaryConfigured) {
-        console.log(`📸 Görsel ${i + 1}/${ilanData.sekiller.length}: ${originalSizeKB.toFixed(1)}KB -> Cloudinary'ye yükleniyor...`);
         
         try {
           const cloudinaryUrl = await uploadImageToCloudinary(base64Image, 'ilanlar');
           uploadedImageUrls.push(cloudinaryUrl);
-          console.log(`✅ Görsel ${i + 1} Cloudinary'ye yüklendi: ${cloudinaryUrl.substring(0, 50)}...`);
         } catch (error) {
           console.error(`❌ Görsel ${i + 1} Cloudinary yükleme hatası:`, error.message);
-          console.log(`⚠️ Görsel ${i + 1} base64 olarak kaydedilecek`);
           // Fallback: base64 olarak kaydet
           uploadedImageUrls.push(base64Image);
         }
       } else {
         // Cloudinary yoksa base64 olarak kaydet
-        console.log(`📸 Görsel ${i + 1}/${ilanData.sekiller.length}: ${originalSizeKB.toFixed(1)}KB -> Base64 olarak kaydediliyor...`);
         uploadedImageUrls.push(base64Image);
       }
     }
@@ -395,9 +373,7 @@ app.post('/api/ilan', async (req, res) => {
     if (cloudinaryConfigured) {
       const cloudinaryCount = uploadedImageUrls.filter(url => url.startsWith('https://res.cloudinary.com')).length;
       const base64Count = uploadedImageUrls.length - cloudinaryCount;
-      console.log(`✅ Görseller işlendi: ${cloudinaryCount} Cloudinary, ${base64Count} Base64`);
     } else {
-      console.log(`✅ Tüm görseller base64 olarak kaydedildi: ${uploadedImageUrls.length} adet`);
     }
     
     // Marka ve model bilgilerini düzenle
@@ -405,7 +381,6 @@ app.post('/api/ilan', async (req, res) => {
     const finalModel = (ilanData.marka === 'Diğər' || ilanData.model === 'Diğər') ? ilanData.otherModel : ilanData.model;
     
     // Debug log'ları
-    console.log('🔍 Model kontrolü:', {
       marka: ilanData.marka,
       model: ilanData.model,
       otherMarka: ilanData.otherMarka,
@@ -416,7 +391,6 @@ app.post('/api/ilan', async (req, res) => {
     
     // Model kontrolü - hem model hem otherModel alanlarını kontrol et
     if (!finalModel || finalModel.trim() === '') {
-      console.log('❌ Model hatası: Model alanı boş');
       return res.status(400).json({ 
         error: 'Model hatası', 
         detail: 'Model alanı zorunludur. Lütfen model seçin veya yazın.' 
@@ -425,7 +399,6 @@ app.post('/api/ilan', async (req, res) => {
     
     // Marka kontrolü
     if (!finalMarka || finalMarka.trim() === '') {
-      console.log('❌ Marka hatası: Marka alanı boş');
       return res.status(400).json({ 
         error: 'Marka hatası', 
         detail: 'Marka alanı zorunludur. Lütfen marka seçin veya yazın.' 
@@ -442,7 +415,6 @@ app.post('/api/ilan', async (req, res) => {
     
     await yeniIlan.save();
     
-    console.log(`✅ Yeni ilan oluşturuldu: ${finalMarka} ${finalModel}`);
     
     res.status(201).json({ 
       message: 'İlan başarıyla oluşturuldu ve onay için gönderildi',
@@ -529,7 +501,6 @@ app.post('/api/admin/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    console.log(`✅ Admin girişi başarılı: ${admin.username}`);
     
     res.json({
       token,
@@ -571,7 +542,6 @@ app.post('/api/admin/create', async (req, res) => {
     
     await admin.save();
     
-    console.log(`✅ Admin oluşturuldu: ${admin.username}`);
     
     res.status(201).json({
       message: 'Admin başarıyla oluşturuldu',
@@ -592,7 +562,6 @@ app.post('/api/admin/create', async (req, res) => {
 // Admin için optimize edilmiş ilan listesi (sadece gerekli alanlar ve ilk görsel)
 app.get('/api/admin/ilanlar', authenticateAdmin, async (req, res) => {
   try {
-    console.log('📋 Admin ilanlar isteği alındı...');
     const startTime = Date.now();
     // Sadece gerekli alanlar ve ilk görsel
     const ilanlar = await Ilan.find({}, {
@@ -614,7 +583,6 @@ app.get('/api/admin/ilanlar', authenticateAdmin, async (req, res) => {
     .sort({ olusturmaTarihi: -1 })
     .lean();
     const endTime = Date.now();
-    console.log(`✅ Admin ilanlar gönderildi: ${ilanlar.length} adet (${endTime - startTime}ms)`);
     res.json(ilanlar);
   } catch (error) {
     console.error('❌ Admin ilan getirme hatası:', error);
@@ -711,7 +679,6 @@ app.post('/api/reklam-talep', async (req, res) => {
     
     await yeniTalep.save();
     
-    console.log(`✅ Yeni reklam talebi oluşturuldu: ${ad} - ${reklamNovu}`);
     
     res.status(201).json({ 
       message: 'Reklam talebi başarıyla gönderildi',
@@ -817,7 +784,6 @@ app.get('/api/test/cloudinary-check', async (req, res) => {
 // İstatistikler
 app.get('/api/admin/istatistikler', authenticateAdmin, async (req, res) => {
   try {
-    console.log('📊 İstatistik isteği alındı...');
     const startTime = Date.now();
     
     const [toplamIlan, onaylanmisIlan, bekleyenIlan, reddedilmisIlan] = await Promise.all([
@@ -828,7 +794,6 @@ app.get('/api/admin/istatistikler', authenticateAdmin, async (req, res) => {
     ]);
     
     const endTime = Date.now();
-    console.log(`✅ İstatistikler hesaplandı (${endTime - startTime}ms):`, {
       toplamIlan,
       onaylanmisIlan,
       bekleyenIlan,
@@ -850,5 +815,4 @@ app.get('/api/admin/istatistikler', authenticateAdmin, async (req, res) => {
 // Sunucu başlat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Backend ${PORT} portunda çalışıyor!`);
 });

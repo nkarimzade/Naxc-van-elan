@@ -21,33 +21,26 @@ function Admin() {
   // Token kontrolü ve admin doğrulama
   useEffect(() => {
     const checkAuth = async () => {
-      console.log('🔐 Admin auth kontrolü başladı...');
       const startTime = Date.now();
       
       const token = localStorage.getItem('adminToken');
       const user = localStorage.getItem('adminUser');
 
       if (!token || !user) {
-        console.log('❌ Token veya user bulunamadı, login sayfasına yönlendiriliyor...');
         navigate('/admin/login');
         return;
       }
 
       try {
-        console.log('✅ Token ve user bulundu, veriler yükleniyor...');
           setAdminUser(JSON.parse(user));
         
-        console.log('📊 İstatistikler yükleniyor...');
         await fetchIstatistikler();
         
-        console.log('📋 İlanlar yükleniyor...');
         await fetchIlanlar();
         
-        console.log('📢 Reklam talepleri yükleniyor...');
         await fetchReklamTalepler();
         
         const endTime = Date.now();
-        console.log(`✅ Admin paneli yüklendi! Süre: ${endTime - startTime}ms`);
         
       } catch (error) {
         console.error('❌ Auth kontrolü başarısız:', error);
@@ -63,7 +56,6 @@ function Admin() {
   // İlanları getir
   const fetchIlanlar = async () => {
     try {
-      console.log('🔄 İlanlar yükleniyor...');
       const startTime = Date.now();
       setLoading(true);
       
@@ -76,7 +68,6 @@ function Admin() {
       });
       
       const endTime = Date.now();
-      console.log(`✅ İlanlar yüklendi: ${response.data.length} adet (${endTime - startTime}ms)`);
       
       setIlanlar(response.data);
     } catch (error) {
@@ -108,7 +99,6 @@ function Admin() {
   // İstatistikleri getir
   const fetchIstatistikler = async () => {
     try {
-      console.log('📊 İstatistikler yükleniyor...');
       const startTime = Date.now();
       
       const token = localStorage.getItem('adminToken');
@@ -120,7 +110,6 @@ function Admin() {
       });
       
       const endTime = Date.now();
-      console.log(`✅ İstatistikler yüklendi (${endTime - startTime}ms):`, response.data);
       
       setIstatistikler(response.data);
     } catch (error) {
@@ -136,7 +125,6 @@ function Admin() {
   // Reklam taleplerini getir
   const fetchReklamTalepler = async () => {
     try {
-      console.log('📢 Reklam talepleri yükleniyor...');
       const startTime = Date.now();
       
       const token = localStorage.getItem('adminToken');
@@ -148,7 +136,6 @@ function Admin() {
       });
       
       const endTime = Date.now();
-      console.log(`✅ Reklam talepleri yüklendi: ${response.data.length} adet (${endTime - startTime}ms)`);
       
       setReklamTalepler(response.data);
     } catch (error) {
@@ -187,7 +174,6 @@ function Admin() {
       // İstatistikleri güncelle
       await fetchIstatistikler();
       
-      console.log('İlan durumu güncellendi:', ilanId, onaylandi ? 'onaylandı' : 'reddedildi');
     } catch (error) {
       console.error('İlan onaylama hatası:', error);
       alert('İlan güncəllənə bilmədi.');
@@ -214,7 +200,6 @@ function Admin() {
       // İstatistikleri güncelle
       await fetchIstatistikler();
       
-      console.log('İlan silindi:', ilanId);
     } catch (error) {
       console.error('İlan silme hatası:', error);
       alert('İlan silinə bilmədi.');
@@ -242,7 +227,6 @@ function Admin() {
       await fetchIstatistikler();
       
       alert(`${response.data.deletedCount} ilan başarıyla silindi!`);
-      console.log('Tüm ilanlar silindi:', response.data.deletedCount);
     } catch (error) {
       console.error('Toplu silme hatası:', error);
       alert('İlanlar silinə bilmədi.');
@@ -269,7 +253,6 @@ function Admin() {
         )
       );
       
-      console.log('Reklam talep durumu güncellendi:', talepId, durum);
     } catch (error) {
       console.error('Durum güncelleme hatası:', error);
       alert('Durum güncəllənə bilmədi.');
@@ -292,7 +275,6 @@ function Admin() {
       
       // Talep listesinden kaldır
       setReklamTalepler(prevTalepler => prevTalepler.filter(talep => talep._id !== talepId));
-      console.log('Reklam talebi silindi:', talepId);
     } catch (error) {
       console.error('Reklam talep silme hatası:', error);
       alert('Reklam tələbi silinə bilmədi.');

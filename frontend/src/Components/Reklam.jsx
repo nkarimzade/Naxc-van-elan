@@ -33,7 +33,6 @@ function Reklam() {
 
     try {
       const response = await axios.post('https://naxc-van-elan-o2sr.onrender.com/api/reklam-talep', formData);
-      console.log('Reklam talebi gönderildi:', response.data);
       setSuccess(true);
       setFormData({
         ad: '',
